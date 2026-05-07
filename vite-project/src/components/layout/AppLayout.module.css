@@ -1,0 +1,41 @@
+.appContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+}
+
+.appBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.mainWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* prevent flex overflow */
+  overflow-x: hidden;
+}
+
+.mainContent {
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #393228 transparent;
+}
+
+/* Mobile sidebar overlay */
+.sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+@media (max-width: 1024px) {
+  .sidebarOverlay {
+    display: block;
+  }
+}

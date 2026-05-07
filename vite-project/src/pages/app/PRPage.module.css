@@ -1,0 +1,313 @@
+.container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.prHeader {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.sectionSubtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.prGrid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .prGrid {
+      grid-template-columns: 1fr;
+  }
+}
+
+.chartCard {
+  background: var(--bg-surface);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-main);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.chartControls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.exerciseSelect {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  border: 1px solid var(--border-main);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filterTabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-main);
+}
+
+.filterBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0.4rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterBtn:hover {
+  color: var(--text-primary);
+}
+
+.filterBtn.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.prListCard {
+  background: var(--bg-surface);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-main);
+}
+
+.cardTitle {
+  margin-bottom: 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.prItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-main);
+}
+
+.prItem:last-child {
+  border-bottom: none;
+}
+
+.prIcon {
+  width: 48px;
+  height: 48px;
+  background: rgba(236, 91, 19, 0.1);
+  color: var(--primary);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prInfo {
+  flex: 1;
+}
+
+.prName {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.prDate {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.prValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.noDataMsg {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+/* Reusing chart styles from WeightPage for the SVG/Bar fallback */
+.chartPlaceholder {
+  flex: 1;
+  min-height: 350px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.bar {
+  background-color: rgba(236, 91, 19, 0.2);
+  flex: 1;
+  max-width: 80px;
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  transition: background-color 0.2s;
+  min-height: 5px;
+}
+
+.bar:hover { background-color: rgba(236, 91, 19, 0.4); }
+.bar.active {
+  background-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(236, 91, 19, 0.3);
+}
+
+.tooltip {
+  position: absolute;
+  top: -2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-main);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.bar:hover .tooltip { opacity: 1; }
+
+.axisLabel {
+  position: absolute;
+  bottom: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Search Option ── */
+.searchContainer {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.searchInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchInputWrap .searchIcon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  background: var(--bg-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(236, 91, 19, 0.1);
+}
+
+.suggestionsDropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestionGroupLabel {
+  padding: 0.75rem 1rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.suggestionItem {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: background 0.2s;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.suggestionItem:hover {
+  background: rgba(236, 91, 19, 0.1);
+  color: var(--primary);
+}
+
+.suggestionItem .material-symbols-outlined {
+  font-size: 1.25rem;
+  color: var(--text-tertiary);
+}
+
+.suggestionItem:hover .material-symbols-outlined {
+  color: var(--primary);
+}

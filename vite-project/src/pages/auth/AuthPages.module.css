@@ -1,0 +1,139 @@
+/* Shared styles for Login, Signup, Onboarding */
+
+.authWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-page) 100%);
+}
+
+.authCard {
+  background-color: var(--bg-header);
+  border: 1px solid var(--border-main);
+  border-radius: 1.5rem;
+  padding: 3rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.authLogo {
+  margin-bottom: 2.5rem;
+}
+
+.authLogo img {
+  height: 80px;
+  width: auto;
+}
+
+.authLogo p {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.formGroup {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: var(--font-main);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.formInput:focus { border-color: var(--primary); }
+.formInput::placeholder { color: var(--text-tertiary); }
+
+.btnBrand {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, #ff8c42 100%);
+  border: none;
+  border-radius: 0.75rem;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 0.5rem;
+}
+
+.btnBrand:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(236, 91, 19, 0.3);
+}
+
+.btnGoogle {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.btnGoogle:hover { background-color: var(--bg-surface); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-tertiary);
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.divider:not(:empty)::before { margin-right: 0.5em; }
+.divider:not(:empty)::after  { margin-left: 0.5em; }
+
+.toggleAuth {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.toggleAuth a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.toggleAuth a:hover { text-decoration: underline; }
