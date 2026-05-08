@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
+import { syncWeight } from '../../lib/sync'
 import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import { formatDateStandard } from '../../utils/dateUtils'
+import { getDayNumber } from '../../utils/workoutSplitUtils'
 import styles from './WeightPage.module.css'
 
 export default function WeightPage() {
@@ -36,16 +38,12 @@ export default function WeightPage() {
   }
 
   // Cycle Status
-  const daysPassed = useMemo(() => {
-    if (!startDate) return 0
-    const start = new Date(startDate)
-    const now = new Date()
-    return Math.floor((now - start) / (1000 * 60 * 60 * 24))
-  }, [startDate])
+  const daysPassed = useMemo(() => getDayNumber(appData), [appData])
   
   const targetDays = 30
-  const remainingDays = Math.max(0, targetDays - (daysPassed % targetDays))
-  const progressPct = ((targetDays - remainingDays) / targetDays) * 100
+  const cycleDay = ((daysPassed - 1) % targetDays) + 1   // 1-based day within the 30-day cycle
+  const remainingDays = Math.max(0, targetDays - cycleDay)
+  const progressPct = (cycleDay / targetDays) * 100
 
   // Handle Add Weight
   const handleAddWeight = (e) => {
@@ -73,7 +71,10 @@ export default function WeightPage() {
     setNewWeight('')
     setPopupType('success')
     setPopupMsg('Weight added successfully!')
-    
+
+    // Background MySQL sync — silent fail if backend is down
+    syncWeight(w.toFixed(1), dateStr)
+
     // Also mark the reminder as dismissed so the global popup doesn't show again today
     const localIsoDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
     localStorage.setItem('weight_reminder_dismissed', localIsoDate)
@@ -145,7 +146,7 @@ export default function WeightPage() {
               <span className="material-symbols-outlined">calendar_today</span>
             </div>
             <div>
-              <p className={styles.cardValue}>Day {daysPassed % targetDays} of {targetDays}</p>
+              <p className={styles.cardValue}>Day {((daysPassed - 1) % targetDays) + 1} of {targetDays}</p>
               <div className={styles.progressContainer}>
                 <div className={styles.progressBar} style={{ width: `${progressPct}%` }}></div>
               </div>

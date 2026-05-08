@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
+import { syncSkillStart, syncSkillMaster, syncSkillRemove } from '../../lib/sync'
 import {
   SKILLS_DATA, CATEGORIES,
   SKILL_VIDEOS, SKILL_STEPS_MAP, DEFAULT_STEPS,
@@ -251,6 +252,7 @@ export default function SkillsPage() {
   const [trainSkill, setTrainSkill] = useState(null)
   const [dialog, setDialog] = useState(null) // { type, skill, catKey }
   const [giveUpDialog, setGiveUpDialog] = useState(null)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
 
   const handleSearchChange = (val) => {
     setSearchQ(val)
@@ -303,6 +305,7 @@ export default function SkillsPage() {
         ...prev,
         ongoing: prev.ongoing.includes(skill.id) ? prev.ongoing : [...prev.ongoing, skill.id],
       }))
+      syncSkillStart(skill.id)
     } else if (type === 'master') {
       setSkillsData(prev => ({
         ...prev,
@@ -310,6 +313,7 @@ export default function SkillsPage() {
         mastered: prev.mastered.includes(skill.id) ? prev.mastered : [...prev.mastered, skill.id],
         nextSkill: prev.nextSkill === skill.id ? null : prev.nextSkill,
       }))
+      syncSkillMaster(skill.id)
     }
   }, [dialog, setSkillsData])
 
@@ -322,6 +326,7 @@ export default function SkillsPage() {
       ongoing: prev.ongoing.filter(id => id !== skill.id),
       nextSkill: prev.nextSkill === skill.id ? null : prev.nextSkill,
     }))
+    syncSkillRemove(skill.id)
   }, [giveUpDialog, setSkillsData])
 
   // derived lists
@@ -365,7 +370,7 @@ export default function SkillsPage() {
       {suggestions.length > 0 && (
         <div className={styles.searchSuggestions}>
           {suggestions.map((item, i) => (
-            <div key={i} className={styles.suggestionItem} onClick={() => {
+            <div key={i} className={styles.suggestionItem} onMouseDown={() => {
                setSearchQ('')
                setSuggestions([])
                openModal(item.skill, item.catKey)
@@ -382,9 +387,28 @@ export default function SkillsPage() {
     </div>
   )
 
+  // Mobile search select handler
+  const handleMobileSkillSelect = (item) => {
+    setIsMobileSearchOpen(false)
+    setSearchQ('')
+    setSuggestions([])
+    openModal(item.skill, item.catKey)
+  }
+
   return (
     <>
-      <AppHeader icon="self_improvement" title="Skills" right={searchInputNode} />
+      <AppHeader
+        icon="self_improvement"
+        title="Skills"
+        showSearch
+        onSearchClick={() => setIsMobileSearchOpen(true)}
+        searchActive={isMobileSearchOpen}
+        searchValue={searchQ}
+        onSearchChange={(val) => handleSearchChange(val)}
+        onSearchClose={() => { setIsMobileSearchOpen(false); setSearchQ(''); setSuggestions([]) }}
+        searchPlaceholder="Search skills..."
+        right={searchInputNode}
+      />
 
       <div className={styles.contentInner}>
         {/* Hero */}
@@ -406,6 +430,7 @@ export default function SkillsPage() {
             </div>
           </div>
         </div>
+
 
         {/* Ongoing */}
         {ongoingSkills.length > 0 && (
@@ -513,6 +538,31 @@ export default function SkillsPage() {
           onConfirm={confirmGiveUp}
           onCancel={() => setGiveUpDialog(null)}
         />
+      )}
+
+      {/* ── Mobile Inline Search Dropdown (below header) ── */}
+      {isMobileSearchOpen && (
+        <div className={styles.mobileSearchDropdown}>
+          {suggestions.length > 0 ? (
+            suggestions.map((item, i) => (
+              <div key={i} className={styles.suggestionItem} onClick={() => handleMobileSkillSelect(item)}>
+                <div className={styles.suggestionImgWrap}>
+                  <img src={item.skill.img} alt="" className={styles.suggestionImg} />
+                </div>
+                <span className={styles.suggestionName}>{item.skill.name}</span>
+                <span className="material-symbols-outlined" style={{marginLeft: 'auto', fontSize: '1rem', color: 'var(--text-tertiary)'}}>open_in_new</span>
+              </div>
+            ))
+          ) : searchQ.trim() ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+              No skills found matching "{searchQ}"
+            </div>
+          ) : (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+              Start typing to search skills...
+            </div>
+          )}
+        </div>
       )}
     </>
   )

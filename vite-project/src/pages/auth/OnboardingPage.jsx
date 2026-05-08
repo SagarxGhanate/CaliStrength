@@ -6,14 +6,16 @@ import styles from './OnboardingPage.module.css'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
 import darkLogo from '../../assets/Logo/Dark theme logo.png'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 export default function OnboardingPage() {
   const { theme, setAppData } = useApp()
   const navigate = useNavigate()
-  
+
   const [step, setStep] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [genMessage, setGenMessage] = useState('Analyzing your fitness level and goals...')
-  
+
   const [formData, setFormData] = useState({
     goal: '',
     experience: '',
@@ -52,22 +54,59 @@ export default function OnboardingPage() {
     const bf = (1.20 * bmi) + (0.23 * age) - (10.8 * genderFactor) - 5.4
 
     setBfResult({ bmi, bf })
-
-    setTimeout(() => {
-      setStep(3)
-    }, 1500)
+    setTimeout(() => setStep(3), 1500)
   }
 
-  const handleCompleteSetup = (e) => {
+  const handleCompleteSetup = async (e) => {
     e.preventDefault()
 
     let goalVal = formData.goal
     if (goalVal === 'maintain') goalVal = 'fit'
 
     const currentW = parseFloat(formData.currentWeight)
-    const targetW = parseFloat(formData.targetWeight)
+    const targetW  = parseFloat(formData.targetWeight)
+    const dateStr  = formatDateStandard(new Date())
 
-    const dateStr = formatDateStandard(new Date())
+    // ── 1. Save to MySQL via your backend ──────────────────────────────────
+    try {
+      const token = localStorage.getItem('cs_token')
+      if (token) {
+        const res = await fetch(`${API}/auth/onboarding`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            goal:            goalVal,
+            experience:      formData.experience,
+            gender:          formData.gender,
+            age:             parseInt(formData.age),
+            height_cm:       parseFloat(formData.height),
+            current_weight:  currentW,
+            target_weight:   targetW,
+            target_days:     parseInt(formData.targetDays),
+            start_date:      dateStr,
+          }),
+        })
+        if (res.ok) {
+          // Update stored user as onboarded
+          const stored = JSON.parse(localStorage.getItem('cs_user') || '{}')
+          stored.is_onboarded = true
+          localStorage.setItem('cs_user', JSON.stringify(stored))
+        } else {
+          const err = await res.json()
+          console.error('Onboarding API error:', err)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save onboarding to backend:', err)
+      // Still continue — don't block the user
+    }
+
+    // ── 2. Also save locally so the rest of the app still works ────────────
+    // Get real user name/email from Firebase auth data
+    const storedUser = JSON.parse(localStorage.getItem('cs_user') || '{}')
 
     const initialData = {
       isNewUser: false,
@@ -82,15 +121,20 @@ export default function OnboardingPage() {
       startDate: dateStr,
       weightHistory: [{ date: dateStr, weight: currentW }],
       profile: {
-        name: 'Athlete',
+        name: storedUser.name || storedUser.displayName || 'Athlete',
         role: 'Athlete',
-        email: '',
+        email: storedUser.email || '',
+        avatar: storedUser.avatar || storedUser.photoURL || '',
+        age: formData.age,
+        height: formData.height,
+        gender: formData.gender,
         targetWeight: targetW,
         bodyFat: bfResult ? bfResult.bf.toFixed(1) : '15'
       },
       allExerciseReps: [],
       dailyLogs: {},
-      skills: {}
+      skills: {},
+      restTime: 30
     }
 
     setAppData(initialData)
@@ -133,17 +177,13 @@ export default function OnboardingPage() {
         </div>
 
         <form onSubmit={(e) => e.preventDefault()}>
-          
+
           {step === 1 && (
             <div>
               <div className={styles.formGroup}>
                 <label>Primary Goal</label>
-                <select 
-                  className={styles.formInput} 
-                  value={formData.goal}
-                  onChange={(e) => setFormData({...formData, goal: e.target.value})}
-                  required
-                >
+                <select className={styles.formInput} value={formData.goal}
+                  onChange={(e) => setFormData({...formData, goal: e.target.value})} required>
                   <option value="" disabled>Select your goal...</option>
                   <option value="gain">Gain Muscle / Weight</option>
                   <option value="lose">Lose Body Fat</option>
@@ -152,12 +192,8 @@ export default function OnboardingPage() {
               </div>
               <div className={styles.formGroup}>
                 <label>Experience Level</label>
-                <select 
-                  className={styles.formInput} 
-                  value={formData.experience}
-                  onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                  required
-                >
+                <select className={styles.formInput} value={formData.experience}
+                  onChange={(e) => setFormData({...formData, experience: e.target.value})} required>
                   <option value="" disabled>What's your fitness background?</option>
                   <option value="beginner">Beginner (New to exercise)</option>
                   <option value="intermediate">Intermediate (Some gym knowledge)</option>
@@ -167,26 +203,16 @@ export default function OnboardingPage() {
               <div className={styles.formGroup} style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <label>Gender</label>
-                  <select 
-                    className={styles.formInput} 
-                    value={formData.gender}
-                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                    required
-                  >
+                  <select className={styles.formInput} value={formData.gender}
+                    onChange={(e) => setFormData({...formData, gender: e.target.value})} required>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
                   <label>Age</label>
-                  <input 
-                    type="number" 
-                    className={styles.formInput} 
-                    placeholder="e.g. 21" 
-                    value={formData.age}
-                    onChange={(e) => setFormData({...formData, age: e.target.value})}
-                    required 
-                  />
+                  <input type="number" className={styles.formInput} placeholder="e.g. 21"
+                    value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} required />
                 </div>
               </div>
               <button type="button" className={styles.btnStart} onClick={handleNextToStep2}>Next</button>
@@ -198,45 +224,24 @@ export default function OnboardingPage() {
               <div className={styles.formGroup} style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <label>Current Weight (kg)</label>
-                  <input 
-                    type="number" 
-                    step="0.1" 
-                    className={styles.formInput} 
-                    placeholder="e.g. 75" 
-                    value={formData.currentWeight}
-                    onChange={(e) => setFormData({...formData, currentWeight: e.target.value})}
-                    required
-                  />
+                  <input type="number" step="0.1" className={styles.formInput} placeholder="e.g. 75"
+                    value={formData.currentWeight} onChange={(e) => setFormData({...formData, currentWeight: e.target.value})} required />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label>Target Weight (kg)</label>
-                  <input 
-                    type="number" 
-                    step="0.1" 
-                    className={styles.formInput} 
-                    placeholder="e.g. 80" 
-                    value={formData.targetWeight}
-                    onChange={(e) => setFormData({...formData, targetWeight: e.target.value})}
-                    required
-                  />
+                  <input type="number" step="0.1" className={styles.formInput} placeholder="e.g. 80"
+                    value={formData.targetWeight} onChange={(e) => setFormData({...formData, targetWeight: e.target.value})} required />
                 </div>
               </div>
               <div className={styles.formGroup}>
                 <label>Height (cm)</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  className={styles.formInput} 
-                  placeholder="e.g. 175" 
-                  value={formData.height}
-                  onChange={(e) => setFormData({...formData, height: e.target.value})}
-                  required
-                />
+                <input type="number" step="0.1" className={styles.formInput} placeholder="e.g. 175"
+                  value={formData.height} onChange={(e) => setFormData({...formData, height: e.target.value})} required />
               </div>
 
               {bfResult && (
                 <div className={styles.bodyFatResult}>
-                  Estimated BMI: <strong>{bfResult.bmi.toFixed(1)}</strong> <br/> 
+                  Estimated BMI: <strong>{bfResult.bmi.toFixed(1)}</strong> <br/>
                   Estimated Body Fat: <strong>~{bfResult.bf.toFixed(1)}%</strong>
                 </div>
               )}
@@ -252,11 +257,8 @@ export default function OnboardingPage() {
             <div>
               <div className={styles.formGroup}>
                 <label>Target Duration (Days)</label>
-                <select 
-                  className={styles.formInput} 
-                  value={formData.targetDays}
-                  onChange={(e) => setFormData({...formData, targetDays: e.target.value})}
-                >
+                <select className={styles.formInput} value={formData.targetDays}
+                  onChange={(e) => setFormData({...formData, targetDays: e.target.value})}>
                   <option value="30">30 Days (Short Term Sync)</option>
                   <option value="60">60 Days</option>
                   <option value="90">90 Days (Full Transformation)</option>

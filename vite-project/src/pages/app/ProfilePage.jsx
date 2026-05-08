@@ -1,15 +1,92 @@
 import { useState, useRef } from 'react'
 import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
+import { changeUserPassword } from '../../lib/firebase'
+import { sendEmail } from '../../lib/email'
 import styles from './ProfilePage.module.css'
 
 export default function ProfilePage() {
   const { appData, setAppData } = useApp()
   const { profile = {} } = appData
   const [activeTab, setActiveTab] = useState('account')
-  const [localProfile, setLocalProfile] = useState(profile)
+
+  // Pull user info from Firebase auth storage as fallback
+  const storedUser = JSON.parse(localStorage.getItem('cs_user') || '{}')
+
+  const [localProfile, setLocalProfile] = useState({
+    name:          (profile.name && profile.name !== 'Athlete' ? profile.name : '') || storedUser.name || storedUser.displayName || '',
+    email:         profile.email || storedUser.email || '',
+    avatar:        profile.avatar || storedUser.avatar || storedUser.photoURL || '',
+    age:           profile.age || appData.age || '',
+    height:        profile.height || appData.height || '',
+    gender:        profile.gender || appData.gender || 'male',
+    role:          profile.role || 'Athlete',
+    bio:           profile.bio || '',
+    phone:         profile.phone || '',
+    dob:           profile.dob || '',
+    targetWeight:  profile.targetWeight || appData.targetweight || '',
+    bodyFat:       profile.bodyFat || '',
+  })
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
+
+  // Password change state
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
+  const handleChangePassword = async () => {
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Please fill in all password fields.')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters long.')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      await changeUserPassword(oldPassword, newPassword)
+      
+      // Send password changed email
+      if (localProfile.email) {
+        await sendEmail({
+          to_email: localProfile.email,
+          subject: 'Password Changed - CaliStrength',
+          message: `Your password was successfully changed.\n\nYour new password is: ${newPassword}\n\nIf you did not make this change, please contact CaliStrength Support immediately.`
+        })
+      }
+
+      setPasswordSuccess('Password successfully updated!')
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      console.error('Password change error:', err)
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setPasswordError('Incorrect current password.')
+      } else if (err.code === 'auth/too-many-requests') {
+        setPasswordError('Too many failed attempts. Please try again later.')
+      } else {
+        setPasswordError(err.message || 'Failed to update password. Ensure you are signed in with email.')
+      }
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
 
   const handleSave = () => {
     setAppData(prev => ({ ...prev, profile: localProfile }))
@@ -174,22 +251,47 @@ export default function ProfilePage() {
 
             <div className={styles.passwordBox}>
               <h4 className={styles.passwordTitle}>Change Password</h4>
+              {passwordError && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{passwordError}</p>}
+              {passwordSuccess && <p style={{ color: '#10b981', fontSize: '0.875rem', marginBottom: '1rem' }}>{passwordSuccess}</p>}
               <div className={styles.profileFields}>
                 <div className={`${styles.fieldGroup} ${styles.fieldFull}`}>
                   <label className={styles.fieldLabel}>Current Password</label>
-                  <input type="password" className={styles.fieldInput} placeholder="••••••••" />
+                  <input 
+                    type="password" 
+                    className={styles.fieldInput} 
+                    placeholder="••••••••" 
+                    value={oldPassword}
+                    onChange={e => setOldPassword(e.target.value)}
+                  />
                 </div>
                 <div className={styles.fieldGroup}>
                   <label className={styles.fieldLabel}>New Password</label>
-                  <input type="password" className={styles.fieldInput} placeholder="••••••••" />
+                  <input 
+                    type="password" 
+                    className={styles.fieldInput} 
+                    placeholder="••••••••" 
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                  />
                 </div>
                 <div className={styles.fieldGroup}>
                   <label className={styles.fieldLabel}>Confirm New Password</label>
-                  <input type="password" className={styles.fieldInput} placeholder="••••••••" />
+                  <input 
+                    type="password" 
+                    className={styles.fieldInput} 
+                    placeholder="••••••••" 
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
                 </div>
               </div>
-              <button className={styles.btnSave} style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-                Change Password
+              <button 
+                className={styles.btnSave} 
+                style={{ alignSelf: 'flex-start', marginTop: '0.5rem', opacity: isChangingPassword ? 0.7 : 1 }}
+                onClick={handleChangePassword}
+                disabled={isChangingPassword}
+              >
+                {isChangingPassword ? 'Updating...' : 'Change Password'}
               </button>
             </div>
 

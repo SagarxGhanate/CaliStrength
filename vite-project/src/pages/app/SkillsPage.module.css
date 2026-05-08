@@ -874,9 +874,33 @@
 }
 
 /* ── Mobile responsive ── */
+
+/* Mobile Search Dropdown (fixed below header) */
+.mobileSearchDropdown {
+  position: fixed;
+  top: 5rem;
+  left: 0;
+  right: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-main);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  z-index: 9;
+  padding: 0.5rem 0;
+}
+
 @media (max-width: 768px) {
   .contentInner { padding: 1rem; }
   .heroSection { flex-direction: column; }
   .heroRight { align-items: flex-start; width: 100%; }
   .searchInput { width: 100%; }
+
+  /* Modal scrollable on small screens */
+  .modal {
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }

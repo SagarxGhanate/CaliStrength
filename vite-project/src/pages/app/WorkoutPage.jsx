@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { syncWorkoutSet } from '../../lib/sync'
 import { Link } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import AppHeader from '../../components/layout/AppHeader'
 import { getTailoredWorkout } from '../../data/workoutData'
 import { filterWorkoutExercises } from '../../data/injuryFilter'
+import { EXERCISE_DB } from '../../data/exerciseDB'
 import RestTimerPopup from './RestTimerPopup'
 import { formatDateStandard } from '../../utils/dateUtils'
 import { getTodaySplitKey, getDayNumber } from '../../utils/workoutSplitUtils'
@@ -67,6 +69,63 @@ function getExerciseGuide(name) {
   return `Step 1: Get into the starting position for ${cleanName}.\nStep 2: Perform the movement with controlled form, engaging the target muscles.\nStep 3: Return to the starting position smoothly and repeat for the required reps.`
 }
 
+/* ── Exercise Image Lookup (for custom/off-plan exercises) ── */
+const EXERCISE_IMAGES = {
+  'standard push-ups':     '/Assets/Pushups.png',
+  'push ups':              '/Assets/Pushups.png',
+  'incline push-ups':      '/Assets/incline pushups.png',
+  'decline push-ups':      '/Assets/decline pushups.png',
+  'diamond push-ups':      '/Assets/diamond pushups.png',
+  'pike push-ups':         '/Assets/Pike Pushups.png',
+  'one arm push-ups':      '/Assets/One arm pushups.png',
+  'pull-ups':              '/Assets/Pullups.png',
+  'pull ups':              '/Assets/Pullups.png',
+  'chin-ups':              '/Assets/chinups.png',
+  'wide grip pull-ups':    '/Assets/wide pullups.png',
+  'australian pull-ups':   '/Assets/Austrailian Pulls.png',
+  'negative pull-ups':     '/Assets/negative pulls.png',
+  'muscle-ups':            '/Assets/Muscle-ups.jpg',
+  'dips':                  '/Assets/Dips.png',
+  'bench dips':            '/Assets/TricepDips.png',
+  'tricep dips':           '/Assets/TricepDips.png',
+  'ring dips':             '/Assets/Ring Dips.png',
+  'bodyweight squats':     '/Assets/Squats.png',
+  'squats':                '/Assets/Squats.png',
+  'jump squats':           '/Assets/Jump squats.png',
+  'pistol squats':         '/Assets/Pistol squats.png',
+  'forearm plank':         '/Assets/plank hold.png',
+  'hollow body hold':      '/Assets/Hollow body hold.png',
+  'superman hold':         '/Assets/Superman hold.png',
+  'dead hang':             '/Assets/DeadHang.png',
+  'hanging knee raises':   '/Assets/Hanging Knee Raises.png',
+  'hanging leg raises':    '/Assets/hanging leg raises.png',
+  'lying leg raises':      '/Assets/laying leg raises.png',
+  'mountain climbers':     '/Assets/mountain climbers.png',
+  'bicycle crunches':      '/Assets/biycle crunches.png',
+  'glute bridges':         '/Assets/Glutebridge.png',
+  'calf raises':           '/Assets/calves raises.png',
+  'v-ups':                 '/Assets/v ups.png',
+  'burpees':               '/Assets/burphees.png',
+  'handstand':             '/Assets/Handstand.png',
+  'handstand push-ups':    '/Assets/HSPU.png',
+  'wall handstand hold':   '/Assets/wall handstand.png',
+  'front lever':           '/Assets/Front Lever.png',
+  'back lever':            '/Assets/Back Lever.png',
+  'planche lean':          '/Assets/Planche Lean.png',
+  'full planche':          '/Assets/Full Planche.png',
+  'human flag':            '/Assets/Human flag.png',
+  'dragon flags':          '/Assets/Dragon Flag.png',
+  'l-sit':                 '/Assets/L-sit.png',
+  'side plank':            '/Assets/side plank.png',
+  'plank jacks':           '/Assets/plank jacks.png',
+  'flutter kicks':         '/Assets/flutter kicks.png',
+  'iron cross':            '/Assets/Iron cross.png',
+}
+
+function getExerciseImage(name) {
+  return EXERCISE_IMAGES[(name || '').toLowerCase()] || null
+}
+
 export default function WorkoutPage() {
   const { appData, setAppData } = useApp()
   const [activeTab, setActiveTab] = useState('exercises')
@@ -86,6 +145,14 @@ export default function WorkoutPage() {
   const prevExerciseNamesRef = useRef(null)
   const [newExerciseNames, setNewExerciseNames] = useState(new Set())
   const [injuryToast, setInjuryToast] = useState(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [highlightedExName, setHighlightedExName] = useState(null)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
+  const searchRef = useRef(null)
+  const exerciseRefs = useRef({})
 
   // Determine current workout cycle — uses same shared utility as OverviewPage
   const currentWorkoutInfo = useMemo(() => {
@@ -121,7 +188,6 @@ export default function WorkoutPage() {
   // Listen for injury updates and capture pre-change state for animation
   useEffect(() => {
     const handleUpdate = (e) => {
-      console.log('[WorkoutPage] injuryUpdate event received:', e?.detail)
       // Show toast based on the command detail
       const detail = e?.detail
       if (detail) {
@@ -176,18 +242,34 @@ export default function WorkoutPage() {
     const today = formatDateStandard(new Date())
     const todayLog = appData.workoutHistory?.find(w => w.date === today)
     
-    const initProgress = {}
-    currentWorkoutInfo.workoutData.exercises.forEach(ex => {
-      let completedSets = 0
-      if (todayLog && todayLog.exercises) {
-        const loggedEx = todayLog.exercises.find(e => e.name === ex.name)
-        if (loggedEx) {
-          completedSets = loggedEx.sets || 0
+    const planExerciseNames = new Set(currentWorkoutInfo.workoutData.exercises.map(ex => ex.name))
+
+    setSessionProgress(prev => {
+      const merged = { ...prev }
+
+      // Update plan exercises from history
+      currentWorkoutInfo.workoutData.exercises.forEach(ex => {
+        let completedSets = 0
+        if (todayLog && todayLog.exercises) {
+          const loggedEx = todayLog.exercises.find(e => e.name === ex.name)
+          if (loggedEx) {
+            completedSets = loggedEx.sets || 0
+          }
         }
+        merged[ex.name] = completedSets
+      })
+
+      // Also restore progress for any custom exercises logged today
+      if (todayLog && todayLog.exercises) {
+        todayLog.exercises.forEach(loggedEx => {
+          if (!planExerciseNames.has(loggedEx.name)) {
+            merged[loggedEx.name] = loggedEx.sets || 0
+          }
+        })
       }
-      initProgress[ex.name] = completedSets
+
+      return merged
     })
-    setSessionProgress(initProgress)
   }, [currentWorkoutInfo, appData])
 
   // Get Ready Countdown Logic
@@ -294,6 +376,9 @@ export default function WorkoutPage() {
     dailyReps.reps += repsNum
 
     setAppData(newAppData)
+
+    // Background MySQL sync — silent fail if backend is down
+    syncWorkoutSet(exName, repsNum, seconds, splitKey)
   }, [appData, setAppData, splitKey, label, duration])
 
   // Called when rest popup closes (Skip clicked or timer runs out)
@@ -328,16 +413,174 @@ export default function WorkoutPage() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  // ── Search Logic ──────────────────────────────────────────────────────────
+  // Close desktop dropdown on outside click/touch
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setIsSearchFocused(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [])
+
+  // Mobile inline search select handler
+  const handleMobileSelectSuggestion = (name) => {
+    setIsMobileSearchOpen(false)
+    setSearchQuery('')
+    handleSelectSuggestion(name)
+  }
+
+  // Auto-clear highlight after 2.5s
+  useEffect(() => {
+    if (!highlightedExName) return
+    const t = setTimeout(() => setHighlightedExName(null), 2500)
+    return () => clearTimeout(t)
+  }, [highlightedExName])
+
+  // Categorize today's exercises + full DB for search
+  const searchSuggestions = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return null // show default groups when empty
+
+    const todayNames = exercises.map(ex => ex.name)
+    const todayMatches = todayNames.filter(n => n.toLowerCase().includes(q))
+    const dbMatches = EXERCISE_DB
+      .filter(ex => ex.name.toLowerCase().includes(q) && !todayNames.some(t => t.toLowerCase() === ex.name.toLowerCase()))
+      .map(ex => ex.name)
+      .slice(0, 8)
+
+    return { today: todayMatches, other: dbMatches }
+  }, [searchQuery, exercises])
+
+  // Default groups to show when search is focused but empty
+  const defaultGroups = useMemo(() => {
+    const cats = { Push: [], Pull: [], Core: [], Legs: [] }
+    exercises.forEach(ex => {
+      const name = ex.name.toLowerCase()
+      if (name.includes('push') || name.includes('dip') || name.includes('pike')) cats.Push.push(ex.name)
+      else if (name.includes('pull') || name.includes('chin') || name.includes('row') || name.includes('hang')) cats.Pull.push(ex.name)
+      else if (name.includes('plank') || name.includes('hollow') || name.includes('leg raise') || name.includes('crunch') || name.includes('twist') || name.includes('v-up') || name.includes('mountain') || name.includes('superman')) cats.Core.push(ex.name)
+      else cats.Legs.push(ex.name)
+    })
+    return Object.entries(cats).filter(([, items]) => items.length > 0)
+  }, [exercises])
+
+  const handleSelectSuggestion = (exName) => {
+    setSearchQuery('')
+    setIsSearchFocused(false)
+
+    // Check if it's in today's exercises
+    const todayEx = exercises.find(e => e.name.toLowerCase() === exName.toLowerCase())
+
+    if (todayEx) {
+      // It's in today's plan — open the same timer popup
+      handleStartSet(todayEx)
+    } else {
+      // Off-plan exercise — create a temporary exercise object
+      const isHold = isHoldExercise(exName, '')
+      const tempEx = {
+        name: exName,
+        sets: 3,
+        reps: isHold ? '30s' : 10,
+        desc: 'Custom exercise — not in today\'s plan',
+        img: getExerciseImage(exName),
+      }
+      // Initialize session progress for this temp exercise if not already tracked
+      if (sessionProgress[exName] === undefined) {
+        setSessionProgress(prev => ({ ...prev, [exName]: 0 }))
+      }
+      handleStartSet(tempEx)
+    }
+  }
+
   return (
     <>
       <AppHeader 
         icon="exercise" 
         title="Workouts" 
         showSearch
+        onSearchClick={() => setIsMobileSearchOpen(true)}
+        searchActive={isMobileSearchOpen}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchClose={() => { setIsMobileSearchOpen(false); setSearchQuery('') }}
+        searchPlaceholder="Search exercises..."
         right={
-          <div className={styles.searchBox}>
-            <span className="material-symbols-outlined">search</span>
-            <input type="text" placeholder="Search workouts..." />
+          <div className={styles.searchBoxWrap} ref={searchRef}>
+            <div className={styles.searchBox}>
+              <span className="material-symbols-outlined">search</span>
+              <input
+                type="text"
+                placeholder="Search exercises..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+              />
+              {searchQuery && (
+                <button className={styles.searchClear} onClick={() => { setSearchQuery(''); setIsSearchFocused(false) }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
+                </button>
+              )}
+            </div>
+
+            {isSearchFocused && (
+              <div className={styles.searchDropdown}>
+                {searchSuggestions === null ? (
+                  <>
+                    <div className={styles.searchDropdownLabel}>Today's Exercises</div>
+                    {defaultGroups.map(([group, items]) => (
+                      <div key={group}>
+                        <div className={styles.searchGroupLabel}>{group}</div>
+                        {items.map(name => (
+                          <div key={name} className={styles.searchItem} onClick={() => handleSelectSuggestion(name)}>
+                            <span className="material-symbols-outlined">fitness_center</span>
+                            <span>{name}</span>
+                            <span className={styles.searchItemTag}>Today</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                ) : (searchSuggestions.today.length > 0 || searchSuggestions.other.length > 0) ? (
+                  <>
+                    {searchSuggestions.today.length > 0 && (
+                      <>
+                        <div className={styles.searchDropdownLabel}>In Today's Workout</div>
+                        {searchSuggestions.today.map(name => (
+                          <div key={name} className={styles.searchItem} onClick={() => handleSelectSuggestion(name)}>
+                            <span className="material-symbols-outlined">fitness_center</span>
+                            <span>{name}</span>
+                            <span className={styles.searchItemTag}>Today</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {searchSuggestions.other.length > 0 && (
+                      <>
+                        <div className={styles.searchDropdownLabel}>All Exercises</div>
+                        {searchSuggestions.other.map(name => (
+                          <div key={name} className={`${styles.searchItem} ${styles.searchItemOther}`} onClick={() => handleSelectSuggestion(name)}>
+                            <span className="material-symbols-outlined">exercise</span>
+                            <span>{name}</span>
+                            <span className={styles.searchItemCustomTag}>Custom</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.searchItem} style={{ color: 'var(--text-tertiary)', cursor: 'default', justifyContent: 'center' }}>
+                    No exercises found matching "{searchQuery}"
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         }
       />
@@ -420,7 +663,9 @@ export default function WorkoutPage() {
             const isFinished = completed >= ex.sets
 
             return (
-              <div key={ex.name} className={`${styles.exerciseCard} ${isFinished ? styles.completed : ''} ${newExerciseNames.has(ex.name) ? styles.exerciseCardNew : ''}`}
+              <div key={ex.name}
+                ref={el => { exerciseRefs.current[ex.name] = el }}
+                className={`${styles.exerciseCard} ${isFinished ? styles.completed : ''} ${newExerciseNames.has(ex.name) ? styles.exerciseCardNew : ''} ${highlightedExName === ex.name ? styles.exerciseCardHighlight : ''}`}
                 style={newExerciseNames.has(ex.name) ? { animationDelay: `${idx * 0.1}s` } : {}}
               >
                 <div className={styles.exerciseImgWrap}>
@@ -579,9 +824,17 @@ export default function WorkoutPage() {
                 <img src={activeExercise.img} alt={activeExercise.name} />
               </div>
             )}
+            {!exerciseDone && !activeExercise.img && (
+              <div className={styles.exerciseModalBanner}>
+                <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--primary)', opacity: 0.5 }}>fitness_center</span>
+              </div>
+            )}
             <div className={styles.exerciseModalHeader}>
               <div>
                 <h3 className={styles.exerciseModalName}>{activeExercise.name}</h3>
+                {activeExercise.desc && activeExercise.desc.includes('not in today') && (
+                  <span className={styles.customBadgeModal}>CUSTOM EXERCISE</span>
+                )}
                 <p className={styles.exerciseModalSets}>
                   {`${sessionProgress[activeExercise.name] || 0}/${activeExercise.sets} sets done — ${activeExercise.sets - (sessionProgress[activeExercise.name] || 0)} remaining`}
                 </p>
@@ -709,11 +962,29 @@ export default function WorkoutPage() {
           targetReps={activeExercise.reps}
           onFinish={handleRestFinish}
           onClose={(loggedReps) => {
-            // If user entered reps, save the set before closing
+            setShowRestPopup(false)
             if (loggedReps) {
-              handleRestFinish(loggedReps)
+              // Save the set data but DON'T start next set — user chose to close
+              const exName = activeExercise.name
+              const actualReps = parseInt(loggedReps) || parseInt(activeExercise.reps) || 10
+
+              saveSetToAppData(exName, actualReps, timerSeconds)
+
+              const currentCompleted = sessionProgress[exName] || 0
+              const newCompleted = currentCompleted + 1
+              setSessionProgress(prev => ({ ...prev, [exName]: newCompleted }))
+
+              if (newCompleted >= activeExercise.sets) {
+                // All sets done
+                setDoneInfo({ sets: newCompleted, totalReps: actualReps * newCompleted })
+                setExerciseDone(true)
+              } else {
+                // More sets remain — just reset timer, don't auto-start
+                setTimerSeconds(0)
+                setTimerActive(false)
+              }
             } else {
-              setShowRestPopup(false)
+              // No reps logged — just close
               setTimerSeconds(0)
               setTimerActive(false)
             }
@@ -731,6 +1002,60 @@ export default function WorkoutPage() {
         <button className={styles.injuryToastClose} onClick={() => setInjuryToast(null)}>
           <span className="material-symbols-outlined">close</span>
         </button>
+      </div>
+    )}
+
+    {/* ── Mobile Inline Search Dropdown (below header) ── */}
+    {isMobileSearchOpen && (
+      <div className={styles.mobileSearchDropdown}>
+        {searchSuggestions === null ? (
+          <>
+            <div className={styles.searchDropdownLabel}>Today's Exercises</div>
+            {defaultGroups.map(([group, items]) => (
+              <div key={group}>
+                <div className={styles.searchGroupLabel}>{group}</div>
+                {items.map(name => (
+                  <div key={name} className={styles.searchItem} onClick={() => handleMobileSelectSuggestion(name)}>
+                    <span className="material-symbols-outlined">fitness_center</span>
+                    <span>{name}</span>
+                    <span className={styles.searchItemTag}>Today</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </>
+        ) : (searchSuggestions.today.length > 0 || searchSuggestions.other.length > 0) ? (
+          <>
+            {searchSuggestions.today.length > 0 && (
+              <>
+                <div className={styles.searchDropdownLabel}>In Today's Workout</div>
+                {searchSuggestions.today.map(name => (
+                  <div key={name} className={styles.searchItem} onClick={() => handleMobileSelectSuggestion(name)}>
+                    <span className="material-symbols-outlined">fitness_center</span>
+                    <span>{name}</span>
+                    <span className={styles.searchItemTag}>Today</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {searchSuggestions.other.length > 0 && (
+              <>
+                <div className={styles.searchDropdownLabel}>All Exercises</div>
+                {searchSuggestions.other.map(name => (
+                  <div key={name} className={`${styles.searchItem} ${styles.searchItemOther}`} onClick={() => handleMobileSelectSuggestion(name)}>
+                    <span className="material-symbols-outlined">exercise</span>
+                    <span>{name}</span>
+                    <span className={styles.searchItemCustomTag}>Custom</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </>
+        ) : (
+          <div className={styles.searchItem} style={{ color: 'var(--text-tertiary)', cursor: 'default', justifyContent: 'center' }}>
+            No exercises found matching "{searchQuery}"
+          </div>
+        )}
       </div>
     )}
     </>

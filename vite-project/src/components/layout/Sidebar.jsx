@@ -16,8 +16,19 @@ const NAV_LINKS = [
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { theme } = useApp();
+  const { theme, appData } = useApp();
   
+  const { profile = {} } = appData || {};
+  const storedUser = JSON.parse(localStorage.getItem('cs_user') || '{}');
+  
+  // Prefer the real name from cs_user over the default 'Athlete' placeholder from older profile data
+  const realName = storedUser.name || storedUser.displayName || '';
+  const profileName = profile.name === 'Athlete' ? '' : profile.name;
+  const userName = profileName || realName || 'User';
+  
+  const userRole = profile.role || 'Athlete';
+  const userAvatar = profile.avatar || storedUser.avatar || storedUser.photoURL || null;
+
   return (
     <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
       {/* Logo */}
@@ -51,11 +62,18 @@ export default function Sidebar({ isOpen, onClose }) {
           </span>
           Personal Records
         </NavLink>
-        <NavLink to="/profile" onClick={onClose} className={styles.footerLink}>
-          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-            account_circle
-          </span>
-          My Profile
+        <NavLink to="/profile" onClick={onClose} className={styles.userProfileLink}>
+          <div className={styles.userAvatarWrapper}>
+            {userAvatar ? (
+              <img src={userAvatar} alt={userName} className={styles.userAvatar} />
+            ) : (
+              <span className="material-symbols-outlined" style={{ fontSize: '1.5rem' }}>account_circle</span>
+            )}
+          </div>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>{userName}</span>
+            <span className={styles.userRole}>{userRole}</span>
+          </div>
         </NavLink>
       </div>
     </aside>

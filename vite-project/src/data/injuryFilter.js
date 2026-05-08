@@ -76,7 +76,7 @@ export function filterWorkoutExercises(workoutDataObj) {
   const clone = JSON.parse(JSON.stringify(workoutDataObj))
 
   const allInjuries = getActiveInjuries()
-  console.log('[InjuryFilter] Active injuries:', JSON.stringify(allInjuries))
+
   if (!allInjuries || allInjuries.length === 0) return clone
 
   // Separate "Remove" and "Light" injuries
@@ -167,7 +167,7 @@ export function filterWorkoutExercises(workoutDataObj) {
     clone.exercises.forEach(ex => {
       if (isExerciseRelatedToPart(ex.name, inj.part) && !isLightAlternative(ex.name)) {
         if (!ex.name.includes('⚠️')) {
-          console.log('[InjuryFilter] Light mode applied to:', ex.name, '| part:', inj.part)
+
           // Cap sets to max 3
           if (typeof ex.sets === 'number') {
             ex.sets = Math.min(ex.sets - 1, 3)

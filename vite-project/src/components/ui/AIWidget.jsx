@@ -421,14 +421,11 @@ export default function AIWidget() {
         
         // Execute all commands found
         const matches = [...reply.matchAll(cmdRegex)]
-        console.log('[AIWidget] Raw reply commands found:', matches.length, matches.map(m => m[0]))
         let injuryChanged = false
         let changedDetail = null
         matches.forEach(match => {
           const [fullMatch, cmd, part] = match
-          console.log('[AIWidget] Applying command:', cmd, 'part:', part)
           applyCommand(cmd, part, newState)
-          console.log('[AIWidget] Injuries after command:', JSON.stringify(newState.injuries))
           injuryChanged = true
           changedDetail = { command: cmd, part: part?.trim() }
         })
@@ -465,12 +462,12 @@ export default function AIWidget() {
               const contextText = [...newState.messages.slice(-6).map(m => m.content), reply].join(' ').toLowerCase()
               const detectedPart = BODY_PARTS.find(p => contextText.includes(p))
               if (detectedPart) {
-                console.log('[AIWidget] FALLBACK RECOVERY — Clearing injury:', detectedPart)
+
                 applyCommand('CLEAR_INJURY', detectedPart, newState)
                 injuryChanged = true
                 changedDetail = { command: 'CLEAR_INJURY', part: detectedPart }
               } else {
-                console.log('[AIWidget] FALLBACK RECOVERY — Clearing ALL injuries')
+
                 applyCommand('CLEAR_ALL_INJURIES', '', newState)
                 injuryChanged = true
                 changedDetail = { command: 'CLEAR_ALL_INJURIES', part: '' }
@@ -486,12 +483,12 @@ export default function AIWidget() {
               if (isLightAction) fallbackCmd = 'ADD_LIGHT_INJURY'
               if (isClearAction) fallbackCmd = 'CLEAR_INJURY'
               
-              console.log('[AIWidget] FALLBACK — AI forgot tags. Applying:', fallbackCmd, detectedPart)
+
               applyCommand(fallbackCmd, detectedPart, newState)
               injuryChanged = true
               changedDetail = { command: fallbackCmd, part: detectedPart }
             } else if (isClearAction) {
-              console.log('[AIWidget] FALLBACK — Clearing all injuries')
+
               applyCommand('CLEAR_ALL_INJURIES', '', newState)
               injuryChanged = true
               changedDetail = { command: 'CLEAR_ALL_INJURIES', part: '' }

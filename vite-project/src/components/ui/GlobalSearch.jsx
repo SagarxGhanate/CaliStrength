@@ -82,7 +82,7 @@ export default function GlobalSearch() {
     if (isSearchOpen) {
       setQuery('')
       setFocus(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
+      setTimeout(() => inputRef.current?.focus(), 300)
     }
   }, [isSearchOpen])
 
