@@ -1,7 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import { sendEmail } from '../../lib/email'
+import { isAuthenticated, getStoredUser } from '../../lib/api'
 import styles from './AuthPages.module.css'
 import darkLogo from '../../assets/Logo/Dark theme logo.png'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
@@ -16,6 +17,13 @@ googleProvider.setCustomParameters({ prompt: 'select_account' })
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function SignupPage() {
+  // If already logged in, skip signup and go straight to dashboard
+  if (isAuthenticated()) {
+    const user = getStoredUser()
+    if (user && !user.is_onboarded) return <Navigate to="/onboarding" replace />
+    return <Navigate to="/" replace />
+  }
+
   const navigate = useNavigate()
   const { theme } = useApp()
   const [name, setName]         = useState('')
@@ -44,6 +52,8 @@ export default function SignupPage() {
       avatar: result.avatar,
       is_onboarded: result.is_onboarded,
     }))
+    // Store login timestamp for 30-day session expiry
+    localStorage.setItem('cs_login_at', Date.now().toString())
     const existing = JSON.parse(localStorage.getItem('caliStrengthData') || '{}')
     existing.profile = {
       ...existing.profile,
