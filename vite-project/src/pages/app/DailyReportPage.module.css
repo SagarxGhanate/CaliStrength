@@ -699,6 +699,19 @@
   }
 }
 
+/* Mobile-only streak+share strip */
+.mobileHeaderStrip {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileHeaderStrip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
 /* ── Popup Modal ── */
 .popupOverlay {
   position: fixed;

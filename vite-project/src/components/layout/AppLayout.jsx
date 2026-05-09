@@ -6,6 +6,7 @@ import GlobalSearch from '../ui/GlobalSearch'
 import NotificationsPanel from '../ui/NotificationsPanel'
 import AIWidget from '../ui/AIWidget'
 import WeightReminderPopup from '../ui/WeightReminderPopup'
+import WelcomeGuide from '../ui/WelcomeGuide'
 import styles from './AppLayout.module.css'
 
 export default function AppLayout() {
@@ -39,6 +40,7 @@ export default function AppLayout() {
       <NotificationsPanel />
       <AIWidget />
       <WeightReminderPopup />
+      <WelcomeGuide />
     </div>
   )
 }

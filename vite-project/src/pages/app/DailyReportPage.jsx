@@ -341,6 +341,17 @@ export default function DailyReportPage() {
           <p className={styles.introSub}>{getTodayLabel()} — {badgeLabel}</p>
         </div>
 
+        {/* Mobile-only streak + share strip (hidden on desktop) */}
+        <div className={styles.mobileHeaderStrip}>
+          <div className={styles.streakPill}>
+            <span className="material-symbols-outlined">local_fire_department</span>
+            <span><span className={styles.streakCount}>{streak}</span> Day Streak</span>
+          </div>
+          <button className={styles.shareBtn} onClick={handleShare}>
+            <span className="material-symbols-outlined">share</span>Share
+          </button>
+        </div>
+
         {/* Summary Cards */}
         <div className={styles.summaryGrid}>
           <div className={styles.summaryCard}>
