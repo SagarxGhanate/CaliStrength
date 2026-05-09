@@ -438,7 +438,7 @@ export default function OverviewPage() {
           </button>
         </div>
 
-        <div className={styles.welcomeHeader}>
+        <div className={`${styles.welcomeHeader} ${styles.animateFadeUp}`}>
           <div className={styles.welcomeTitle}>
             <h2>Athlete Dashboard</h2>
             <p>Welcome back, {profile?.name || 'Athlete'} — push your limits today. 👊</p>
@@ -446,7 +446,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className={styles.statsGrid}>
+        <div className={`${styles.statsGrid} ${styles.animateFadeUp} ${styles.delay1}`}>
           <StatCard
             icon="monitor_weight"
             label="Day's Weight"
@@ -472,12 +472,12 @@ export default function OverviewPage() {
         {/* Main 2-col grid */}
         <div className={styles.dashboardMainGrid}>
           {/* Left: Today's Session */}
-          <div className={styles.colSession}>
+          <div className={`${styles.colSession} ${styles.animateFadeUp} ${styles.delay2}`}>
             <SessionCard workout={todayWorkout} goal={goal} />
           </div>
 
           {/* Right: Next Skill + Weekly Progress + PRs */}
-          <div className={styles.colSidebar}>
+          <div className={`${styles.colSidebar} ${styles.animateFadeUp} ${styles.delay3}`}>
             <NextSkillCard skillsData={skillsData} />
             <WeeklyProgressCard pct={weeklyProgress.pct} done={weeklyProgress.done} total={weeklyProgress.total} />
             <LatestPRsCard allExerciseReps={allExerciseReps} />

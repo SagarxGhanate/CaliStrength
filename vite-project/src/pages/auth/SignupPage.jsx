@@ -31,6 +31,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   async function sendTokenToBackend(idToken) {
     const res = await fetch(`${API}/auth/firebase`, {
@@ -102,7 +103,10 @@ export default function SignupPage() {
         message: `Welcome to CaliStrength!\n\nYour account has been created successfully.\nEmail: ${email}\n\nStart your calisthenics journey and track your progress!\n\nHappy training!\n- CaliStrength Support`
       })
       
-      handleAuthSuccess(signupData)
+      setSignupSuccess(true)
+      setTimeout(() => {
+        handleAuthSuccess(signupData)
+      }, 1500)
     } catch (err) {
       const msg = err.message || ''
       if (msg.includes('email-already-in-use')) {
@@ -112,7 +116,6 @@ export default function SignupPage() {
       } else {
         setError(msg || 'Sign up failed. Please try again.')
       }
-    } finally {
       setLoading(false)
     }
   }
@@ -125,19 +128,44 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, googleProvider)
       const idToken = await result.user.getIdToken()
       const backendResult = await sendTokenToBackend(idToken)
-      handleAuthSuccess(backendResult)
+      
+      setSignupSuccess(true)
+      setTimeout(() => {
+        handleAuthSuccess(backendResult)
+      }, 1500)
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message || 'Google sign-up failed.')
       }
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <div className={styles.authWrapper}>
-      <div className={styles.authCard}>
+      <div className={styles.authCard} style={{ position: 'relative' }}>
+        
+        {/* Loading / Success Overlay */}
+        {(loading || signupSuccess) && (
+          <div className={styles.authOverlay}>
+            {signupSuccess ? (
+              <div className={styles.successPopup}>
+                <div className={styles.successIcon}>
+                  <span className="material-symbols-outlined">check</span>
+                </div>
+                <h3>Signup Successful!</h3>
+                <p>Welcome to CaliStrength</p>
+              </div>
+            ) : (
+              <>
+                <div className={styles.spinner}></div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Creating Account...</h3>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.8 }}>Setting up your profile</p>
+              </>
+            )}
+          </div>
+        )}
+
         <div className={styles.authLogo}>
           <img src={theme === 'dark' ? darkLogo : lightLogo} alt="CaliStrength" />
           <p>Create your account</p>

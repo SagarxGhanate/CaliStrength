@@ -1,5 +1,20 @@
 /* OverviewPage.module.css */
 
+/* ── Animations ── */
+@keyframes fadeUpIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animateFadeUp {
+  animation: fadeUpIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.delay1 { animation-delay: 0.1s; }
+.delay2 { animation-delay: 0.2s; }
+.delay3 { animation-delay: 0.3s; }
+.delay4 { animation-delay: 0.4s; }
+
 /* ── Layout ── */
 .contentInner {
   padding: 2rem;

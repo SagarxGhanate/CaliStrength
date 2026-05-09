@@ -127,7 +127,16 @@ export default function LoginPage() {
 
   return (
     <div className={styles.authWrapper}>
-      <div className={styles.authCard}>
+      <div className={styles.authCard} style={{ position: 'relative' }}>
+        {/* Loading Overlay */}
+        {loading && (
+          <div className={styles.authOverlay}>
+            <div className={styles.spinner}></div>
+            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Authenticating...</h3>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.8 }}>Connecting securely</p>
+          </div>
+        )}
+
         <div className={styles.authLogo}>
           <img src={theme === 'dark' ? darkLogo : lightLogo} alt="CaliStrength" />
           <p>Sign in to continue</p>
