@@ -7,7 +7,7 @@ import { getTailoredWorkout } from '../../data/workoutData'
 import { filterWorkoutExercises } from '../../data/injuryFilter'
 import { EXERCISE_DB } from '../../data/exerciseDB'
 import RestTimerPopup from './RestTimerPopup'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { formatDateStandard, toLocalDateStr } from '../../utils/dateUtils'
 import { getTodaySplitKey, getDayNumber } from '../../utils/workoutSplitUtils'
 import { isHoldExercise, formatRepsDisplay, getStatLabel } from '../../utils/exerciseUtils'
 import styles from './WorkoutPage.module.css'
@@ -239,8 +239,8 @@ export default function WorkoutPage() {
   // Initialize session progress from today's history if available
   useEffect(() => {
     if (!currentWorkoutInfo || !appData) return
-    const today = formatDateStandard(new Date())
-    const todayLog = appData.workoutHistory?.find(w => w.date === today)
+    const today = toLocalDateStr(new Date())
+    const todayLog = appData.workoutHistory?.find(w => toLocalDateStr(w.date) === today)
     
     const planExerciseNames = new Set(currentWorkoutInfo.workoutData.exercises.map(ex => ex.name))
 
@@ -321,12 +321,13 @@ export default function WorkoutPage() {
 
   // Save one set worth of data to appData
   const saveSetToAppData = useCallback((exName, repsNum, seconds) => {
-    const today = formatDateStandard(new Date())
+    const today = toLocalDateStr(new Date())
     const newAppData = { ...appData }
     if (!newAppData.workoutHistory) newAppData.workoutHistory = []
     if (!newAppData.allExerciseReps) newAppData.allExerciseReps = []
 
-    let todayLog = newAppData.workoutHistory.find(w => w.date === today)
+    // Match today's log using toLocalDateStr to handle both 'YYYY-MM-DD' and legacy 'May 08, 2026' formats
+    let todayLog = newAppData.workoutHistory.find(w => toLocalDateStr(w.date) === today)
     if (!todayLog) {
       todayLog = { date: today, split: splitKey, label, duration, totalReps: 0, totalSeconds: 0, exercises: [] }
       newAppData.workoutHistory.push(todayLog)
@@ -358,7 +359,7 @@ export default function WorkoutPage() {
 
     // Legacy Support: workoutHoursPerDay
     if (!newAppData.workoutHoursPerDay) newAppData.workoutHoursPerDay = []
-    let dailyHours = newAppData.workoutHoursPerDay.find(h => h.date === today)
+    let dailyHours = newAppData.workoutHoursPerDay.find(h => toLocalDateStr(h.date) === today)
     if (!dailyHours) {
       dailyHours = { date: today, seconds: 0, minutes: 0 }
       newAppData.workoutHoursPerDay.push(dailyHours)
@@ -368,7 +369,7 @@ export default function WorkoutPage() {
 
     // Legacy Support: workoutRepsPerDay
     if (!newAppData.workoutRepsPerDay) newAppData.workoutRepsPerDay = []
-    let dailyReps = newAppData.workoutRepsPerDay.find(r => r.date === today)
+    let dailyReps = newAppData.workoutRepsPerDay.find(r => toLocalDateStr(r.date) === today)
     if (!dailyReps) {
       dailyReps = { date: today, reps: 0 }
       newAppData.workoutRepsPerDay.push(dailyReps)
@@ -378,7 +379,7 @@ export default function WorkoutPage() {
     setAppData(newAppData)
 
     // Background MySQL sync — silent fail if backend is down
-    syncWorkoutSet(exName, repsNum, seconds, splitKey)
+    syncWorkoutSet(exName, repsNum, seconds, splitKey, exDaily.sets)
   }, [appData, setAppData, splitKey, label, duration])
 
   // Called when rest popup closes (Skip clicked or timer runs out)

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { formatDateStandard, toLocalDateStr } from '../../utils/dateUtils'
 import { BODY_PARTS } from '../../data/injuryFilter'
 import styles from './AIWidget.module.css'
 
@@ -113,16 +113,16 @@ function buildSystemPrompt(appData) {
   }).join('\n  ') || 'None'
 
   // Today & yesterday
-  const today = formatDateStandard(new Date())
-  const todayWorkout = workoutH.find(w => w.date === today)
+  const today = toLocalDateStr(new Date())
+  const todayWorkout = workoutH.find(w => toLocalDateStr(w.date) === today)
   const todayStr = todayWorkout
     ? `${todayWorkout.type || todayWorkout.split || 'Workout'} (${todayWorkout.duration || 0} min, ${todayWorkout.totalReps || 0} reps)`
     : 'Not started yet'
 
   const yesterdayDate = new Date()
   yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-  const yesterday = formatDateStandard(yesterdayDate)
-  const yWorkout = workoutH.find(w => w.date === yesterday)
+  const yesterday = toLocalDateStr(yesterdayDate)
+  const yWorkout = workoutH.find(w => toLocalDateStr(w.date) === yesterday)
   const yesterdayStr = yWorkout
     ? `${yWorkout.type || yWorkout.split || 'Workout'} (${yWorkout.totalReps || 0} reps)`
     : 'Rest / not logged'
@@ -157,9 +157,9 @@ function buildSystemPrompt(appData) {
   const cwDate = new Date()
   cwDate.setDate(cwDate.getDate() - 1)
   for (let i = 0; i < 30; i++) {
-    const dStr = formatDateStandard(cwDate)
-    const hasWorkout = workoutH.some(w => w.date === dStr)
-    const hasWeight = wh.some(w => w.date === dStr)
+    const dStr = toLocalDateStr(cwDate)
+    const hasWorkout = workoutH.some(w => toLocalDateStr(w.date) === dStr)
+    const hasWeight = wh.some(w => toLocalDateStr(w.date) === dStr)
     if (!hasWorkout && !hasWeight) {
       inactiveDays++
       cwDate.setDate(cwDate.getDate() - 1)
@@ -239,22 +239,86 @@ ACTIVE INJURIES
 ${injuries.length ? injuries.map(i => `• ${i.part} (${i.mode || 'remove'} mode${i.permanent ? ', permanent' : ', 7-day auto-clear'})`).join('\n') : 'None — all clear'}
 
 ═══════════════════════════════════════
-HOW CALISTRENGTH APP WORKS
+HOW CALISTRENGTH APP WORKS — COMPLETE GUIDE
 ═══════════════════════════════════════
-CaliStrength is a complete bodyweight/calisthenics training app with these features:
-- DASHBOARD: Shows today's workout split, weekly activity, streak, and quick stats
-- WORKOUT PAGE: Users follow a Push/Pull/Legs/Core rotation cycle. Each workout has warmup, cardio, exercises (with sets/reps), and cooldown. There's a built-in rest timer between sets. Users log reps after each set.
-- PROGRESS PAGE: Shows workout activity charts (weekly/monthly/all-time), total reps trends, weight graph, and muscle focus breakdown
-- PERSONAL RECORDS: Tracks best reps per exercise over time with a searchable progression chart
-- WEIGHT TRACKING: Users log daily weight. Shows trend graph over time
-- DAILY REPORT: Summary card of today's activity that can be shared as an image
-- SKILLS PAGE: Track calisthenics skill progressions (handstand, muscle-up, planche, etc.)
-- SETTINGS: Change goal, experience level, rest timer, theme, manage injuries
-- AI COACH (you!): Help with fitness questions, injury management, diet advice, workout guidance
+CaliStrength is a premium calisthenics/bodyweight training app. Here is a COMPLETE guide to every feature:
 
-The workout split rotates: Push → Pull → Legs → Core, repeating. Sunday is rest day.
-Workout plans adapt based on the user's goal (Gain Weight / Lose Weight / Stay Fit) and experience level.
-When an injury is active, exercises that could aggravate it are automatically swapped with safe alternatives.
+📱 NAVIGATION:
+- Sidebar (desktop): Dashboard, Workout, Progress, Activity, Weight, Skills, Daily Report, Analyzer, Records, Profile, Settings
+- Bottom footer (mobile): Same navigation but compact icons
+- Header: Page title + notification bell + search + sidebar toggle
+- AI Coach (you!): Floating button bottom-right on every page
+
+🏠 DASHBOARD (Home / Overview):
+- Welcome greeting with user's name
+- 3 stat cards: Day's Weight (links to /weight), Workout Day (shows Day N, links to /workout), Current Streak (fire icon)
+- Today's Session card: Shows the current split (Push/Core/Pull/Legs), exercise list preview (first 5), duration, intensity, exercise count. "Start Session" button navigates to /workout
+- Next Skill card: Shows the skill the user marked as their next goal from the Skills page
+- Weekly Sessions ring chart: Shows X of 6 sessions completed this week (Mon-Sat)
+- Latest PRs: Top 5 personal records
+- Notification bell: Opens the notification panel drawer
+
+💪 WORKOUT PAGE (/workout):
+- Shows today's split based on the Push → Core → Pull → Legs rotation cycle
+- Sunday is ALWAYS a rest day (no workout)
+- Workout structure: Warmup exercises → Cardio → Main exercises → Cooldown/Stretch
+- Each exercise shows: name, sets × reps (or hold time for isometric exercises)
+- User clicks "Start Workout" to begin logging. A rest timer (configurable in settings, default 30 sec) runs between sets
+- After each set, user enters their actual reps achieved
+- Workout auto-saves to MySQL backend after completion
+- Exercise plans adapt based on: user's Goal (gain/lose/fit), Experience Level (beginner/intermediate/advanced), and active Injuries
+
+📊 PROGRESS PAGE (/progress):
+- Weekly/Monthly/All-time activity bar charts
+- Total reps trends over time
+- Weight progress graph
+- Muscle focus breakdown (how many Push vs Pull vs Legs vs Core sessions)
+
+🏆 PERSONAL RECORDS (/records):
+- Lists every exercise with the user's best (highest reps) performance
+- Searchable exercise list
+- Progression chart for each exercise over time
+
+⚖️ WEIGHT TRACKING (/weight):
+- Cycle Status card: Shows Day X of ${appData?.targetDays || 30} (based on user's target: 30, 60, or 90 days)
+- Daily Weight card with trend indicator (green arrow = good direction for goal, red = bad)
+- Target Weight card showing how many kg to go
+- Progress graph with bar chart of recent weights
+- "Add Today's Weight" form — weight can ONLY be logged ONCE per day. A confirmation popup appears with a 3-second delay before the Add button activates
+- Weight history table
+
+📋 DAILY REPORT (/daily-report):
+- Beautiful summary card of today's workout activity
+- Shows split type, duration, total reps, calories burned
+- Can be shared as an image (screenshot-friendly design)
+
+🎯 SKILLS PAGE (/skills):
+- Lists 12 calisthenics skills in 4 tiers: Beginner (Push Ups, Squats, Dead Hang), Intermediate (Dips, Pull Ups, L-Sit, Dragon Flag), Advanced (Handstand, Front Lever), Elite (Muscle Ups, Human Flag, Full Planche)
+- User can mark skills as "ongoing" or "mastered"
+- User can set a "Next Skill" which appears on the Dashboard
+- Skill mastery is tracked and reported in weekly summaries
+
+⚙️ SETTINGS (/settings):
+- General tab: Fitness Goal (Gain/Lose/Stay Fit), Experience Level, Rest Timer, Injury management, Theme (Dark/Light mode)
+- Account tab: Name, Age, Gender, Height, Current Weight, Target Weight, Role, Bio
+- Privacy tab: Email (read-only), Phone, Change Password
+- "Start New Journey" (Reset App): Deletes all workout/weight/progress data from the database but preserves the user's account and onboarding data. The last recorded weight carries over as Day 1's weight for the new journey
+- Log Out: Confirmation popup before signing out
+
+🔔 NOTIFICATIONS:
+- Weekly Performance Report (every Sunday): Sessions count, total reps, weight change, top muscle group, PRs achieved, skills mastered, coach's motivational note
+- Final Journey Report: When the user reaches their target day (30, 60, or 90), a comprehensive detailed report is generated covering the entire journey
+- Achievement badges: Streak milestones (7+ days), Iron Grip (10+ pull-up sessions), Core of Steel (5+ core sessions)
+- Inactivity warnings (3+ days without workout)
+- Today's session reminder
+- Welcome notification for new users
+
+🔄 JOURNEY SYSTEM:
+- Users set a target duration during onboarding: 30, 60, or 90 days
+- The app tracks their Day number (Day 1, Day 2, etc.) from their start date
+- On the final day (target day), a comprehensive Journey Report is generated
+- Users can "Reset & Start Fresh" from Settings to begin a new journey
+- When resetting, the last weight carries over so Day 1 of the new journey starts where the previous one ended
 
 ═══════════════════════════════════════
 YOUR BEHAVIOR RULES

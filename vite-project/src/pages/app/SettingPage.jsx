@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/layout/AppHeader'
+import ConfirmPopup from '../../components/ui/ConfirmPopup'
 import { useApp } from '../../context/AppContext'
 import { signOut, changeUserPassword } from '../../lib/firebase'
 import { sendEmail } from '../../lib/email'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { formatDateStandard, toLocalDateStr } from '../../utils/dateUtils'
 import styles from './SettingPage.module.css'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -34,6 +35,10 @@ export default function SettingPage() {
   const { profile = {}, goal = 'gain', level = 'beginner', restTime = 90 } = appData
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showWeightConfirm, setShowWeightConfirm] = useState(false)
+  const [pendingAccountSave, setPendingAccountSave] = useState(null)
 
   // Pull user info from Firebase auth storage as fallback
   const storedUser = JSON.parse(localStorage.getItem('cs_user') || '{}')
@@ -128,7 +133,7 @@ export default function SettingPage() {
     setAppData({ ...appData, goal: localGoal, level: localLevel, restTime: localRestTime })
     setTheme(localTheme)
 
-    // Persist to MySQL backend
+    // Persist to MySQL backend (includes onboarding fields)
     await saveToBackend({
       goal: localGoal,
       experience: localLevel,
@@ -150,21 +155,27 @@ export default function SettingPage() {
     alert('General settings saved!')
   }
 
-  const handleSaveAccount = async () => {
+  const doSaveAccount = async () => {
     // Also update weight history if currentWeight changed
     const w = parseFloat(localProfile.currentWeight)
     let newHistory = [...(appData.weightHistory || [])]
 
     if (!isNaN(w) && w > 0) {
-      const dateStr = formatDateStandard(new Date())
-      const todayIdx = newHistory.findIndex(h => h.date === dateStr)
-      if (todayIdx >= 0) newHistory[todayIdx].weight = w.toFixed(1)
-      else newHistory.push({ date: dateStr, weight: w.toFixed(1) })
+      const dateStr = toLocalDateStr(new Date())
+      const alreadyLoggedToday = newHistory.some(h => toLocalDateStr(h.date) === dateStr)
+
+      if (alreadyLoggedToday) {
+        // Just update today's entry
+        const todayIdx = newHistory.findIndex(h => toLocalDateStr(h.date) === dateStr)
+        if (todayIdx >= 0) newHistory[todayIdx].weight = w.toFixed(1)
+      } else {
+        newHistory.push({ date: dateStr, weight: w.toFixed(1) })
+      }
     }
 
     setAppData({ ...appData, profile: localProfile, weightHistory: newHistory })
 
-    // Persist to MySQL backend
+    // Persist to MySQL backend (includes onboarding fields)
     await saveToBackend({
       name: localProfile.name || undefined,
       avatar: localProfile.avatar || undefined,
@@ -180,11 +191,52 @@ export default function SettingPage() {
     alert('Account settings saved!')
   }
 
-  const handleResetApp = () => {
-    if (window.confirm("Are you sure? This will delete all your workout history and progress. This cannot be undone.")) {
-      localStorage.removeItem('caliStrengthData')
-      window.location.href = '/login'
+  const handleSaveAccount = async () => {
+    const w = parseFloat(localProfile.currentWeight)
+    const dateStr = toLocalDateStr(new Date())
+    const alreadyLoggedToday = (appData.weightHistory || []).some(h => toLocalDateStr(h.date) === dateStr)
+
+    // If weight changed and not logged today, show confirmation popup
+    if (!isNaN(w) && w > 0 && !alreadyLoggedToday) {
+      setPendingAccountSave(true)
+      setShowWeightConfirm(true)
+      return
     }
+
+    await doSaveAccount()
+  }
+
+  const handleResetApp = async () => {
+    // Call backend to delete user data (keeps onboarding + user account)
+    const token = localStorage.getItem('cs_token')
+    const lastWeight = (appData.weightHistory || []).length > 0
+      ? appData.weightHistory[appData.weightHistory.length - 1].weight
+      : null
+
+    try {
+      if (token) {
+        await fetch(`${API}/auth/reset`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ carry_over_weight: lastWeight ? parseFloat(lastWeight) : null }),
+        })
+      }
+    } catch (err) {
+      console.warn('[Settings] Backend reset error:', err.message)
+    }
+
+    // Clear localStorage app data but keep auth
+    localStorage.removeItem('caliStrengthData')
+    localStorage.removeItem('cs_session_progress')
+    localStorage.removeItem('cs_ai_chat')
+    localStorage.removeItem('cs_ana_history')
+    localStorage.removeItem('caliSkills')
+    localStorage.removeItem('caliReadNotifs')
+    setShowResetConfirm(false)
+    window.location.href = '/'
   }
 
   const handleLogout = async () => {
@@ -204,6 +256,7 @@ export default function SettingPage() {
     localStorage.removeItem('cs_ana_history')
     localStorage.removeItem('caliSkills')
     localStorage.removeItem('caliReadNotifs')
+    setShowLogoutConfirm(false)
     navigate('/login')
   }
 
@@ -349,15 +402,22 @@ export default function SettingPage() {
                 <div className={styles.appearanceRow}>
                   <div className={styles.appearanceLeft}>
                     <div className={styles.themeIconWrap}>
-                      <span className="material-symbols-outlined">{localTheme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
+                      <span className="material-symbols-outlined">{theme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
                     </div>
                     <div>
-                      <p className={styles.prefName}>{localTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}</p>
+                      <p className={styles.prefName}>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</p>
                       <p className={styles.prefDesc}>Toggle between light and dark themes</p>
                     </div>
                   </div>
-                  <button className={styles.btnTheme} onClick={() => setLocalTheme(t => t === 'dark' ? 'light' : 'dark')}>
-                    Switch to {localTheme === 'dark' ? 'Light' : 'Dark'}
+                  <button 
+                    className={styles.btnTheme} 
+                    onClick={() => {
+                      const newTheme = theme === 'dark' ? 'light' : 'dark';
+                      setTheme(newTheme);
+                      setLocalTheme(newTheme); // Keep local state in sync just in case
+                    }}
+                  >
+                    Switch to {theme === 'dark' ? 'Light' : 'Dark'}
                   </button>
                 </div>
               </div>
@@ -368,9 +428,9 @@ export default function SettingPage() {
             </footer>
 
             <div className={styles.dangerZone}>
-              <h3 className={styles.dangerTitle}>Reset App</h3>
-              <p className={styles.dangerDesc}>This will delete all your workout history, weight logs, streaks, and skill progress. This cannot be undone.</p>
-              <button className={styles.btnDanger} onClick={handleResetApp}>
+              <h3 className={styles.dangerTitle}>Start New Journey</h3>
+              <p className={styles.dangerDesc}>This will delete all your workout history, weight logs, streaks, and skill progress. Your onboarding data and account will be preserved. Your last weight will carry over as Day 1 weight of the new journey.</p>
+              <button className={styles.btnDanger} onClick={() => setShowResetConfirm(true)}>
                 <span className="material-symbols-outlined">restart_alt</span>
                 Reset & Start Fresh
               </button>
@@ -386,7 +446,7 @@ export default function SettingPage() {
                     <p className={styles.logoutDesc}>Sign out of your CaliStrength account on this device</p>
                   </div>
                 </div>
-                <button className={styles.btnLogout} onClick={handleLogout} disabled={isLoggingOut}>
+                <button className={styles.btnLogout} onClick={() => setShowLogoutConfirm(true)} disabled={isLoggingOut}>
                   <span className="material-symbols-outlined">{isLoggingOut ? 'hourglass_empty' : 'logout'}</span>
                   {isLoggingOut ? 'Signing Out…' : 'Log Out'}
                 </button>
@@ -452,6 +512,18 @@ export default function SettingPage() {
                     </select>
                   </div>
                   <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Gender</label>
+                    <select
+                      className={styles.fieldInput}
+                      value={localProfile.gender || 'male'}
+                      onChange={e => setLocalProfile({ ...localProfile, gender: e.target.value })}
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className={styles.fieldGroup}>
                     <label className={styles.fieldLabel}>Height (cm)</label>
                     <input
                       type="number"
@@ -470,6 +542,17 @@ export default function SettingPage() {
                       value={localProfile.currentWeight || ''}
                       onChange={e => setLocalProfile({ ...localProfile, currentWeight: e.target.value })}
                       placeholder="e.g. 75"
+                    />
+                  </div>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Target Weight (kg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className={styles.fieldInput}
+                      value={localProfile.targetWeight || ''}
+                      onChange={e => setLocalProfile({ ...localProfile, targetWeight: e.target.value })}
+                      placeholder="e.g. 70"
                     />
                   </div>
                   <div className={`${styles.fieldGroup} ${styles.fieldFull}`}>
@@ -570,6 +653,52 @@ export default function SettingPage() {
         )}
 
       </div>
+
+      {/* LOGOUT CONFIRMATION */}
+      {showLogoutConfirm && (
+        <ConfirmPopup
+          icon="logout"
+          iconColor="#ef4444"
+          title="Sign Out?"
+          message="Are you sure you want to sign out of your CaliStrength account? You'll need to log back in to access your data."
+          confirmText="Log Out"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={handleLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
+
+      {/* RESET APP CONFIRMATION */}
+      {showResetConfirm && (
+        <ConfirmPopup
+          icon="restart_alt"
+          iconColor="#ef4444"
+          title="Start New Journey?"
+          message="This will permanently delete all workout history, weight logs, streaks, and skill progress. Your account and onboarding data will be preserved. Your last recorded weight will carry over as Day 1."
+          confirmText="Reset & Start Fresh"
+          cancelText="Cancel"
+          delaySec={3}
+          variant="danger"
+          onConfirm={handleResetApp}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
+
+      {/* WEIGHT CONFIRM ON ACCOUNT SAVE */}
+      {showWeightConfirm && (
+        <ConfirmPopup
+          icon="monitor_weight"
+          iconColor="var(--primary)"
+          title="Confirm Weight Entry"
+          message={`You are about to log ${parseFloat(localProfile.currentWeight).toFixed(1)} kg. Weight can only be added once per day — make sure the value is correct.`}
+          confirmText="Save & Log Weight"
+          cancelText="Cancel"
+          delaySec={3}
+          onConfirm={async () => { setShowWeightConfirm(false); await doSaveAccount() }}
+          onCancel={() => { setShowWeightConfirm(false); setPendingAccountSave(null) }}
+        />
+      )}
     </>
   )
 }

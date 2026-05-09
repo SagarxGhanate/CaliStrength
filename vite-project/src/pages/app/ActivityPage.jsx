@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import styles from './ActivityPage.module.css'
-import { parseStoredDate } from '../../utils/dateUtils'
+import { parseStoredDate, toLocalDateStr } from '../../utils/dateUtils'
 
 
 export default function ActivityPage() {
@@ -56,7 +56,7 @@ export default function ActivityPage() {
     // 3. Compute actual Longest Streak
     const dates = [...new Set(workoutHistory.map(w => {
       const d = parseStoredDate(w.date || w.timestamp)
-      return d.toISOString().split('T')[0]
+      return toLocalDateStr(d)
     }))].sort()
     
     let longest = 0

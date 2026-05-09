@@ -56,7 +56,7 @@ async function del(path, body) {
  * seconds: time taken for the set
  * splitKey: 'push', 'pull', 'legs', 'core'
  */
-export async function syncWorkoutSet(exName, reps, seconds, splitKey = '') {
+export async function syncWorkoutSet(exName, reps, seconds, splitKey = '', setNumber = 1) {
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
@@ -68,7 +68,7 @@ export async function syncWorkoutSet(exName, reps, seconds, splitKey = '') {
       exercise_name: exName,
       category: splitKey,
       total_reps: reps || 0,
-      sets_data: [{ set: 1, reps: reps || 0 }],
+      sets_data: [{ set: setNumber, reps: reps || 0 }],
     }]
   })
 

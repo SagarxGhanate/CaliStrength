@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { parseStoredDate, toLocalDateStr } from '../utils/dateUtils'
 
 // ─── Default data shape (mirrors caliStrengthData) ────────────────────────
 const DEFAULT_DATA = {
@@ -64,10 +65,10 @@ function mergeRemoteIntoLocal(local, remote) {
     }))
 
     // Compute longestStreak from workout history dates
-    const uniqueDates = [...new Set(remote.workoutHistory.map(w => w.date))].sort()
+    const uniqueDates = [...new Set(remote.workoutHistory.map(w => toLocalDateStr(w.date)))].sort()
     let longest = 0, current = 0, prevDate = null
     for (const ds of uniqueDates) {
-      const d = new Date(ds); d.setHours(0,0,0,0)
+      const d = parseStoredDate(ds); d.setHours(0,0,0,0)
       if (!prevDate) { current = 1 }
       else {
         const diff = (d - prevDate) / 86400000
@@ -92,6 +93,7 @@ function mergeRemoteIntoLocal(local, remote) {
     if (remote.profile.experience)    merged.level = remote.profile.experience
     if (remote.profile.startDate)     merged.startDate = remote.profile.startDate
     if (remote.profile.targetWeight)  merged.profile.targetWeight = remote.profile.targetWeight
+    if (remote.profile.targetDays)    merged.targetDays = remote.profile.targetDays
     if (remote.profile.restTime != null) merged.restTime = remote.profile.restTime
   }
 
@@ -122,22 +124,45 @@ async function fetchRemoteData() {
     const records  = recordsRes.ok  ? await recordsRes.json()  : []
 
     // Normalize workout history: snake_case → camelCase
-    const normalizedHistory = workouts.map(w => ({
-      id:             w.id,
-      date:           w.date,
-      totalSeconds:   w.total_seconds || w.totalSeconds || 0,
-      totalReps:      w.total_reps || w.totalReps || 0,
-      caloriesBurned: w.calories_burned || w.caloriesBurned || 0,
-      label:          w.label || w.split || 'Workout',
-      split:          w.split || '',
-      duration:       Math.floor((w.total_seconds || w.totalSeconds || 0) / 60),
-      exercises:      (w.exercises || []).map(e => ({
-        name:       e.exercise_name || e.name || '',
-        category:   e.category || '',
-        totalReps:  e.total_reps || e.totalReps || 0,
-        setsData:   e.sets_data || e.setsData || null,
-      })),
-    }))
+    const normalizedHistory = workouts.map(w => {
+      const exercises = (w.exercises || []).map(e => {
+        const setsData = e.sets_data || e.setsData || null;
+        return {
+          name:       e.exercise_name || e.name || '',
+          category:   e.category || '',
+          totalReps:  e.total_reps || e.totalReps || 0,
+          setsData:   setsData,
+          sets:       Array.isArray(setsData) ? setsData.length : 0,
+        };
+      })
+
+      // Derive split from exercises' category (most common category wins)
+      let derivedSplit = w.split || ''
+      if (!derivedSplit && exercises.length > 0) {
+        const catCounts = {}
+        exercises.forEach(e => {
+          if (e.category) catCounts[e.category] = (catCounts[e.category] || 0) + 1
+        })
+        const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]
+        if (topCat) derivedSplit = topCat[0]
+      }
+
+      const splitLabel = derivedSplit
+        ? derivedSplit.charAt(0).toUpperCase() + derivedSplit.slice(1) + ' Day'
+        : 'Workout'
+
+      return {
+        id:             w.id,
+        date:           w.date,
+        totalSeconds:   w.total_seconds || w.totalSeconds || 0,
+        totalReps:      w.total_reps || w.totalReps || 0,
+        caloriesBurned: w.calories_burned || w.caloriesBurned || 0,
+        label:          w.label || splitLabel,
+        split:          derivedSplit,
+        duration:       Math.floor((w.total_seconds || w.totalSeconds || 0) / 60),
+        exercises,
+      }
+    })
 
     // Build allExerciseReps from backend records + workout exercises
     const exerciseMap = {}
@@ -156,16 +181,22 @@ async function fetchRemoteData() {
 
     // Enrich from workout history exercises
     for (const w of normalizedHistory) {
+      const dateKey = toLocalDateStr(w.date)
       for (const e of w.exercises) {
         if (!e.name) continue
         if (!exerciseMap[e.name]) {
-          exerciseMap[e.name] = { name: e.name, highestPR: 0, totalReps: 0, sessions: 0 }
+          exerciseMap[e.name] = { name: e.name, highestPR: 0, totalReps: 0, sessions: 0, daysLogged: {} }
         }
-        exerciseMap[e.name].totalReps += (e.totalReps || 0)
-        exerciseMap[e.name].sessions += 1
-        if ((e.totalReps || 0) > exerciseMap[e.name].highestPR) {
-          exerciseMap[e.name].highestPR = e.totalReps
+        const entry = exerciseMap[e.name]
+        entry.totalReps += (e.totalReps || 0)
+        entry.sessions += 1
+        if ((e.totalReps || 0) > entry.highestPR) {
+          entry.highestPR = e.totalReps
         }
+        // Build daysLogged so Progress chart can look up reps per day
+        if (!entry.daysLogged) entry.daysLogged = {}
+        if (!entry.daysLogged[dateKey]) entry.daysLogged[dateKey] = { reps: 0, duration: 0 }
+        entry.daysLogged[dateKey].reps += (e.totalReps || 0)
       }
     }
 

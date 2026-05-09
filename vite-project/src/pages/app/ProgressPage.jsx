@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import AppHeader from '../../components/layout/AppHeader'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { formatDateStandard, toLocalDateStr, parseStoredDate } from '../../utils/dateUtils'
 import styles from './ProgressPage.module.css'
 
 export default function ProgressPage() {
@@ -11,7 +11,7 @@ export default function ProgressPage() {
 
   // --- STATS CALCULATION ---
   const sessions = workoutHistory.length
-  const totalReps = (appData.allExerciseReps || []).reduce((acc, ex) => acc + (ex.totalReps || 0), 0)
+  const totalReps = workoutHistory.reduce((acc, w) => acc + (w.totalReps || 0), 0)
   const totalSeconds = workoutHistory.reduce((acc, w) => acc + (w.totalSeconds || (w.duration ? w.duration * 60 : 0)), 0)
   
   let avgDurationStr = '0m'
@@ -46,11 +46,11 @@ export default function ProgressPage() {
     } else if (progressRange === 'ALL') {
       let startD = new Date(now.getFullYear(), now.getMonth(), 1)
       if (appData.startDate) {
-        const sd = new Date(appData.startDate)
+        const sd = parseStoredDate(appData.startDate)
         if (!isNaN(sd.getTime())) startD = new Date(sd.getFullYear(), sd.getMonth(), 1)
       } else if (workoutHistory.length > 0) {
-        const sorted = [...workoutHistory].sort((a,b) => new Date(a.date) - new Date(b.date))
-        const oldest = new Date(sorted[0].date)
+        const sorted = [...workoutHistory].sort((a,b) => parseStoredDate(a.date) - parseStoredDate(b.date))
+        const oldest = parseStoredDate(sorted[0].date)
         if (!isNaN(oldest.getTime())) startD = new Date(oldest.getFullYear(), oldest.getMonth(), 1)
       }
       if (startD > now) startD = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -61,9 +61,17 @@ export default function ProgressPage() {
         curr.setDate(curr.getDate() + 1)
       }
     }
+
+    // Build a map of YYYY-MM-DD → total reps from workoutHistory
+    const repsMap = {}
+    workoutHistory.forEach(w => {
+      const key = toLocalDateStr(w.date)
+      repsMap[key] = (repsMap[key] || 0) + (w.totalReps || 0)
+    })
     
     const days = daysArr.map((d, index) => {
-      const dateStr = formatDateStandard(d)
+      const dateKey = toLocalDateStr(d)
+      const dateDisplay = formatDateStandard(d)
       let dayName = ''
       
       if (progressRange === '1W') {
@@ -75,19 +83,10 @@ export default function ProgressPage() {
         if (d.getDate() === 1) dayName = d.toLocaleDateString('en-US', { month: 'short' })
       }
       
-      let dayReps = 0
-      if (appData.allExerciseReps) {
-        appData.allExerciseReps.forEach(ex => {
-          if (ex.daysLogged && ex.daysLogged[dateStr]) {
-            dayReps += ex.daysLogged[dateStr].reps || 0
-          }
-        })
-      }
-      
       return {
         label: dayName,
-        date: dateStr,
-        reps: dayReps,
+        date: dateDisplay,
+        reps: repsMap[dateKey] || 0,
         isToday: d.getTime() === now.getTime()
       }
     })
@@ -147,7 +146,7 @@ export default function ProgressPage() {
   const recentWorkouts = [...workoutHistory].reverse().slice(0, 5)
 
   // --- WEIGHT HISTORY (Last 10 + Chart data) ---
-  const sortedWeights = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date))
+  const sortedWeights = [...weightHistory].sort((a, b) => parseStoredDate(a.date) - parseStoredDate(b.date))
   const recentWeights = [...sortedWeights].reverse().slice(0, 5)
   
   const [hoveredPoint, setHoveredPoint] = useState(null)
@@ -164,24 +163,24 @@ export default function ProgressPage() {
     if (weightRange === '1W') {
       const oneWeekAgo = new Date(now)
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 6)
-      pts = sortedWeights.filter(w => new Date(w.date) >= oneWeekAgo && new Date(w.date) <= new Date())
+      pts = sortedWeights.filter(w => parseStoredDate(w.date) >= oneWeekAgo && parseStoredDate(w.date) <= new Date())
     } else if (weightRange === '1M') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
       pts = sortedWeights.filter(w => {
-        const d = new Date(w.date)
+        const d = parseStoredDate(w.date)
         return d >= startOfMonth && d <= endOfMonth
       })
     } else {
       let startD = new Date(now.getFullYear(), now.getMonth(), 1)
       if (appData.startDate) {
-        const sd = new Date(appData.startDate)
+        const sd = parseStoredDate(appData.startDate)
         if (!isNaN(sd.getTime())) startD = new Date(sd.getFullYear(), sd.getMonth(), 1)
       } else if (weightHistory.length > 0) {
-        const oldest = new Date(sortedWeights[0].date)
+        const oldest = parseStoredDate(sortedWeights[0].date)
         if (!isNaN(oldest.getTime())) startD = new Date(oldest.getFullYear(), oldest.getMonth(), 1)
       }
-      pts = sortedWeights.filter(w => new Date(w.date) >= startD)
+      pts = sortedWeights.filter(w => parseStoredDate(w.date) >= startD)
     }
     
     // Fallback if no points in range

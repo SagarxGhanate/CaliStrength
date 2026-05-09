@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { syncWeight } from '../../lib/sync'
 import AppHeader from '../../components/layout/AppHeader'
+import ConfirmPopup from '../../components/ui/ConfirmPopup'
 import { useApp } from '../../context/AppContext'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { formatDateStandard, toLocalDateStr, parseStoredDate } from '../../utils/dateUtils'
 import { getDayNumber } from '../../utils/workoutSplitUtils'
 import styles from './WeightPage.module.css'
 
@@ -12,6 +13,8 @@ export default function WeightPage() {
   const [newWeight, setNewWeight] = useState('')
   const [popupMsg, setPopupMsg] = useState(null)
   const [popupType, setPopupType] = useState('success')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [pendingWeight, setPendingWeight] = useState(null)
 
   // Derived Data
   const targetWeight = profile.targetWeight || 70.0
@@ -40,8 +43,8 @@ export default function WeightPage() {
   // Cycle Status
   const daysPassed = useMemo(() => getDayNumber(appData), [appData])
   
-  const targetDays = 30
-  const cycleDay = ((daysPassed - 1) % targetDays) + 1   // 1-based day within the 30-day cycle
+  const targetDays = appData.targetDays || 30
+  const cycleDay = ((daysPassed - 1) % targetDays) + 1   // 1-based day within the cycle
   const remainingDays = Math.max(0, targetDays - cycleDay)
   const progressPct = (cycleDay / targetDays) * 100
 
@@ -52,23 +55,34 @@ export default function WeightPage() {
     if (isNaN(w) || w <= 0) return
 
     const now = new Date()
-    const dateStr = formatDateStandard(now)
+    const dateStr = toLocalDateStr(now)
     
-    // Check if logged today
-    const alreadyLoggedToday = weightHistory.some(h => h.date === dateStr)
+    // Check if logged today — use toLocalDateStr for comparison to handle both formats
+    const alreadyLoggedToday = weightHistory.some(h => toLocalDateStr(h.date) === dateStr)
     
     if (alreadyLoggedToday) {
       setPopupType('error')
-      setPopupMsg('User can add weight only once a day.')
+      setPopupMsg('You have already logged your weight today. Come back tomorrow!')
       setNewWeight('')
       return
     }
+
+    // Show confirmation popup with 3-second delay
+    setPendingWeight(w)
+    setShowConfirm(true)
+  }
+
+  const handleConfirmAdd = () => {
+    const w = pendingWeight
+    const dateStr = toLocalDateStr(new Date())
 
     const newHistory = [...weightHistory, { date: dateStr, weight: w.toFixed(1) }]
     const newData = { ...appData, weightHistory: newHistory }
     
     setAppData(newData)
     setNewWeight('')
+    setShowConfirm(false)
+    setPendingWeight(null)
     setPopupType('success')
     setPopupMsg('Weight added successfully!')
 
@@ -76,8 +90,7 @@ export default function WeightPage() {
     syncWeight(w.toFixed(1), dateStr)
 
     // Also mark the reminder as dismissed so the global popup doesn't show again today
-    const localIsoDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-    localStorage.setItem('weight_reminder_dismissed', localIsoDate)
+    localStorage.setItem('weight_reminder_dismissed', dateStr)
   }
 
   // Chart Data
@@ -122,8 +135,13 @@ export default function WeightPage() {
       const recent = !active && i >= recentHistory.length - 4
       
       const reverseIdx = recentHistory.length - 1 - i
-      // Match 2.0 logic: "Show date on every 3rd bar from the end"
-      const label = reverseIdx % 3 === 0 ? h.date.split(' ').slice(0, 2).join(' ') : '' 
+      // Show date on every 3rd bar from the end
+      let label = ''
+      if (reverseIdx % 3 === 0) {
+        // Handle both 'YYYY-MM-DD' and 'May 08, 2026' formats
+        const d = parseStoredDate(h.date)
+        label = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+      }
       
       bars.push({ id: `data-${i}`, height, weight: w, label, active, recent })
     })
@@ -303,7 +321,22 @@ export default function WeightPage() {
 
       </div>
 
-      {/* POPUP MODAL */}
+      {/* WEIGHT CONFIRM POPUP */}
+      {showConfirm && (
+        <ConfirmPopup
+          icon="monitor_weight"
+          iconColor="var(--primary)"
+          title="Confirm Weight Entry"
+          message={`You are about to log ${pendingWeight?.toFixed(1)} kg. Weight can only be added once per day — make sure the value is correct.`}
+          confirmText="Add Weight"
+          cancelText="Cancel"
+          delaySec={3}
+          onConfirm={handleConfirmAdd}
+          onCancel={() => { setShowConfirm(false); setPendingWeight(null) }}
+        />
+      )}
+
+      {/* SUCCESS / ERROR POPUP */}
       {popupMsg && (
         <div className={styles.popupOverlay} onClick={() => setPopupMsg(null)}>
           <div className={styles.popupModal} onClick={e => e.stopPropagation()}>

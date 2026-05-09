@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useCallback } from 'react'
 import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import { useNavigate } from 'react-router-dom'
-import { formatDateStandard, parseStoredDate } from '../../utils/dateUtils'
+import { formatDateStandard, parseStoredDate, toLocalDateStr } from '../../utils/dateUtils'
 import styles from './DailyReportPage.module.css'
 
 // Helper: get today's weekday label
@@ -152,30 +152,26 @@ export default function DailyReportPage() {
   const todayWeight = last7.find(d => d.isToday)?.value ?? null
   
   const targetDateIso = useMemo(() => {
-    const today = new Date()
-    const todayIso = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+    const todayKey = toLocalDateStr(new Date())
     
     const hasWorkoutToday = workoutHistory.some(w => {
-      const d = parseStoredDate(w.date || w.timestamp)
-      return d.toISOString().split('T')[0] === todayIso
+      return toLocalDateStr(w.date || w.timestamp) === todayKey
     })
     
-    if (hasWorkoutToday) return todayIso
+    if (hasWorkoutToday) return todayKey
     
     // If no workout today, find the most recent one
     if (workoutHistory.length > 0) {
       const lastWorkout = workoutHistory[workoutHistory.length - 1]
-      const d = parseStoredDate(lastWorkout.date || lastWorkout.timestamp)
-      return d.toISOString().split('T')[0]
+      return toLocalDateStr(lastWorkout.date || lastWorkout.timestamp)
     }
     
-    return todayIso
+    return todayKey
   }, [workoutHistory])
 
   const todayWorkouts = useMemo(() => {
     return workoutHistory.filter(w => {
-      const d = parseStoredDate(w.date || w.timestamp)
-      return d.toISOString().split('T')[0] === targetDateIso
+      return toLocalDateStr(w.date || w.timestamp) === targetDateIso
     })
   }, [workoutHistory, targetDateIso])
 
@@ -190,17 +186,10 @@ export default function DailyReportPage() {
   }, [todayWorkouts])
 
   const handleLogWeight = (w) => {
-    const today = new Date()
-    const localIsoDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-    const legacyDateStr = formatDateStandard(today)
-    const shortDateStr = formatDateStandard(today)
+    const todayKey = toLocalDateStr(new Date())
     
     // Check if already logged today
-    const alreadyLogged = weightHistory.some(x => 
-      (x.date && x.date.startsWith(localIsoDate)) || 
-      x.date === legacyDateStr || 
-      x.date === shortDateStr
-    )
+    const alreadyLogged = weightHistory.some(x => toLocalDateStr(x.date) === todayKey)
     
     if (alreadyLogged) {
       setPopupType('error')
@@ -209,7 +198,7 @@ export default function DailyReportPage() {
       return
     }
 
-    const entry = { weight: w.toFixed(1), date: legacyDateStr }
+    const entry = { weight: w.toFixed(1), date: todayKey }
     const newHistory = [...weightHistory, entry]
     
     setAppData(prev => ({

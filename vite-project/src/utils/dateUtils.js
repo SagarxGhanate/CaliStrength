@@ -8,6 +8,14 @@ export function formatDateStandard(dateParam) {
 export function parseStoredDate(dateStr) {
   if (!dateStr) return new Date();
   
+  // Handle YYYY-MM-DD format explicitly to avoid UTC midnight shift.
+  // new Date("2026-05-07") parses as UTC midnight, which in IST/EST etc.
+  // shifts to the previous day. Instead, split and use local Date constructor.
+  const isoMatch = String(dateStr).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoMatch) {
+    return new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]))
+  }
+  
   // Try normal parse
   let d = new Date(dateStr);
   
@@ -27,3 +35,16 @@ export function parseStoredDate(dateStr) {
   
   return d;
 }
+
+/**
+ * Convert a date to "YYYY-MM-DD" string in local timezone.
+ * Use this for all date comparisons to avoid format mismatches.
+ */
+export function toLocalDateStr(dateParam) {
+  const d = dateParam instanceof Date ? dateParam : parseStoredDate(dateParam)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+

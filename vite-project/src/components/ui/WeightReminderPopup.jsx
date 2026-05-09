@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
-import { formatDateStandard } from '../../utils/dateUtils'
+import { toLocalDateStr } from '../../utils/dateUtils'
 import styles from './WeightReminderPopup.module.css'
 
 export default function WeightReminderPopup() {
@@ -19,23 +19,19 @@ export default function WeightReminderPopup() {
       }
 
       const now = new Date()
-      // Create local ISO-like string safely
-      const localIsoDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-      const weightPageDateStr = formatDateStandard(now)
+      const todayKey = toLocalDateStr(now)
       
       // Check local storage for dismissal
       const lastDismissed = localStorage.getItem('weight_reminder_dismissed')
-      if (lastDismissed === localIsoDate) {
+      if (lastDismissed === todayKey) {
         setShow(false)
         return
       }
 
       const weightHistory = appData?.weightHistory || []
 
-      // Normal case: Check if weight logged today
-      const loggedToday = weightHistory.some(w => 
-        w.date.startsWith(localIsoDate) || w.date === weightPageDateStr
-      )
+      // Check if weight logged today using toLocalDateStr for all date formats
+      const loggedToday = weightHistory.some(w => toLocalDateStr(w.date) === todayKey)
       
       if (loggedToday) {
         setShow(false)
@@ -61,9 +57,8 @@ export default function WeightReminderPopup() {
   if (!show) return null
 
   const handleDismiss = () => {
-    const now = new Date()
-    const localIsoDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-    localStorage.setItem('weight_reminder_dismissed', localIsoDate)
+    const todayKey = toLocalDateStr(new Date())
+    localStorage.setItem('weight_reminder_dismissed', todayKey)
     setShow(false)
   }
 

@@ -19,6 +19,8 @@ import AIAnalyzerPage from './pages/app/AIAnalyzerPage'
 import PRPage from './pages/app/PRPage'
 import ProfilePage from './pages/app/ProfilePage'
 import SettingPage from './pages/app/SettingPage'
+import CreditsPage from './pages/app/CreditsPage'
+import ResourcesPage from './pages/app/ResourcesPage'
 
 export default function App() {
   return (
@@ -42,6 +44,8 @@ export default function App() {
           <Route path="/records"      element={<PRPage />} />
           <Route path="/profile"      element={<ProfilePage />} />
           <Route path="/settings"     element={<SettingPage />} />
+          <Route path="/credits"      element={<CreditsPage />} />
+          <Route path="/resources"    element={<ResourcesPage />} />
         </Route>
       </Route>
 
