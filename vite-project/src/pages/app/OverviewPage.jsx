@@ -75,20 +75,34 @@ function getWeeklyProgress(workoutHistory = []) {
   const total = 6 // 6 sessions per week (Mon–Sat)
   const today = new Date()
   const dow = today.getDay()
+  
+  // If today is Sunday, refresh the donut to 0 for the upcoming week
+  if (dow === 0) {
+    return { total, done: 0, pct: 0 }
+  }
+
+  // Find Monday of the current week
   const monday = new Date(today)
-  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1))
+  monday.setDate(today.getDate() - (dow - 1))
   monday.setHours(0,0,0,0)
 
-  // Count sessions logged this week (Mon to today)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23,59,59,999)
+  // Find Saturday of the current week
+  const saturday = new Date(monday)
+  saturday.setDate(monday.getDate() + 5)
+  saturday.setHours(23,59,59,999)
 
-  const done = workoutHistory.filter(w => {
+  // Count unique days worked out this week (Mon to Sat)
+  const uniqueDaysDone = new Set()
+
+  workoutHistory.forEach(w => {
     const d = parseStoredDate(w.date || w.timestamp)
-    return d >= monday && d <= sunday
-  }).length
+    // Only count if it's between Mon-Sat and not a Sunday
+    if (d >= monday && d <= saturday && d.getDay() !== 0) {
+      uniqueDaysDone.add(d.toDateString())
+    }
+  })
 
+  const done = uniqueDaysDone.size
   const capped = Math.min(done, total)
   return { total, done: capped, pct: Math.round((capped / total) * 100) }
 }
