@@ -155,30 +155,34 @@ body {
 }
 
 @keyframes counterUp {
-  from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animateFadeUp {
-  animation: fadeUpIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeUpIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animateScaleIn {
   animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animateSlideRight {
   animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animateCounter {
   animation: counterUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
-.delay1 { animation-delay: 0.08s; }
-.delay2 { animation-delay: 0.18s; }
-.delay3 { animation-delay: 0.28s; }
-.delay4 { animation-delay: 0.38s; }
-.delay5 { animation-delay: 0.48s; }
-.delay6 { animation-delay: 0.58s; }
+.delay1 { animation-delay: 0.1s; }
+.delay2 { animation-delay: 0.2s; }
+.delay3 { animation-delay: 0.3s; }
+.delay4 { animation-delay: 0.4s; }
+.delay5 { animation-delay: 0.5s; }
+.delay6 { animation-delay: 0.6s; }
 
