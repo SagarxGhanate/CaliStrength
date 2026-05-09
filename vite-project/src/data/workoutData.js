@@ -508,9 +508,9 @@ export function getTailoredWorkout(appData) {
     const shuffled = [...pool].sort(() => random() - 0.5);
     
     // Determine how many exercises based on experience
-    let count = 5;
-    if (experience === 'intermediate') count = 6;
-    if (experience === 'advanced') count = 7;
+    let count = 7;
+    if (experience === 'intermediate') count = 7;
+    if (experience === 'advanced') count = 8;
 
     const selected = shuffled.slice(0, count);
 

@@ -80,7 +80,8 @@ export function filterWorkoutExercises(workoutDataObj) {
   if (!allInjuries || allInjuries.length === 0) return clone
 
   // Separate "Remove" and "Light" injuries
-  const removeParts = allInjuries.filter(i => i.mode !== 'light').map(i => i.part)
+  const excludeExercises = allInjuries.filter(i => i.mode === 'exclude_exercise').map(i => i.part.toLowerCase())
+  const removeParts = allInjuries.filter(i => i.mode === 'remove').map(i => i.part)
   const lightInjuries = allInjuries.filter(i => i.mode === 'light')
   const lightParts = lightInjuries.map(i => i.part)
 
@@ -93,6 +94,14 @@ export function filterWorkoutExercises(workoutDataObj) {
   const skipLightLowerBody = lightParts.some(i => ['knee', 'shin', 'ankle', 'hamstring', 'calf', 'hip', 'lower back'].includes(i))
   const skipLightUpperBodyPush = lightParts.some(i => ['shoulder', 'elbow', 'wrist', 'neck', 'chest'].includes(i))
   const skipLightUpperBodyPull = lightParts.some(i => ['shoulder', 'elbow', 'wrist', 'back'].includes(i))
+
+  // Handle Specific Exercise Removals
+  if (excludeExercises.length > 0) {
+    clone.exercises = clone.exercises.filter(ex => {
+      // Remove if any excluded string is found in the exercise name
+      return !excludeExercises.some(excludedStr => ex.name.toLowerCase().includes(excludedStr))
+    })
+  }
 
   // Handle "Remove" Injuries
   if (skipLowerBody) {
