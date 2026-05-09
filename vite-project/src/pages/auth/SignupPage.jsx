@@ -129,6 +129,17 @@ export default function SignupPage() {
       const idToken = await result.user.getIdToken()
       const backendResult = await sendTokenToBackend(idToken)
       
+      // Attempt to send welcome email (no password since they use Google)
+      try {
+        await sendEmail({
+          to_email: result.user.email,
+          subject: '🔥 Welcome to CaliStrength',
+          message: `Welcome to CaliStrength, ${result.user.displayName || 'Athlete'}!\n\nYour account has been successfully created using Google Sign-In.\n\n📧 Email: ${result.user.email}\n\n🏋️ Start your calisthenics journey and track your progress!\n\nHappy training!\n— CaliStrength Team`
+        })
+      } catch (emailErr) {
+        console.error('Failed to send google welcome email', emailErr)
+      }
+
       setSignupSuccess(true)
       setTimeout(() => {
         handleAuthSuccess(backendResult)

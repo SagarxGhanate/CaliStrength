@@ -55,7 +55,7 @@ export default function WelcomeGuide() {
 
     // 3. Only show on the EXACT day they joined
     const todayStr = toLocalDateStr(new Date())
-    if (profile.startDate && profile.startDate !== todayStr) {
+    if (appData.startDate && appData.startDate !== todayStr) {
       localStorage.setItem(STORAGE_KEY, '1') // Permanent skip on this device
       return
     }
