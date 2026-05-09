@@ -14,8 +14,19 @@ function getTodayLabel() {
 // Helper: get the last 7 logged weights sequentially (no calendar gaps)
 function getRecentWeightData(weightHistory) {
   const sorted = [...(weightHistory || [])].sort((a,b) => parseStoredDate(a.date) - parseStoredDate(b.date))
-  const recent = sorted.slice(-7)
   
+  // Deduplicate by date — keep only the latest entry per day
+  const unique = []
+  const seenDates = new Set()
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const dateKey = toLocalDateStr(sorted[i].date)
+    if (!seenDates.has(dateKey)) {
+      seenDates.add(dateKey)
+      unique.unshift(sorted[i])
+    }
+  }
+  
+  const recent = unique.slice(-7)
   const today = new Date()
   
   const days = recent.map(entry => {
@@ -353,7 +364,7 @@ export default function DailyReportPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className={styles.summaryGrid}>
+        <div className={`${styles.summaryGrid} animateFadeUp delay1`}>
           <div className={styles.summaryCard}>
             <p className={styles.summaryLabel}>Active Time</p>
             <div className={styles.summaryValue}>
@@ -391,7 +402,7 @@ export default function DailyReportPage() {
         </div>
 
         {/* Weight Chart + PR Alerts */}
-        <div className={styles.insightsGrid}>
+        <div className={`${styles.insightsGrid} animateFadeUp delay2`}>
           {/* Weight Trend */}
           <div className={`${styles.reportCard} ${styles.insightsMain}`}>
             <div className={styles.cardHeader}>
@@ -432,7 +443,7 @@ export default function DailyReportPage() {
         </div>
 
         {/* Today's Exercises + Tomorrow's Preview */}
-        <div className={styles.bottomGrid}>
+        <div className={`${styles.bottomGrid} animateFadeUp delay3`}>
           {/* Today's Exercises */}
           <div className={`${styles.reportCard} ${styles.exercisesCard}`}>
             <div className={styles.cardHeader}>

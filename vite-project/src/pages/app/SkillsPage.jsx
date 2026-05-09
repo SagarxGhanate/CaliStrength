@@ -412,7 +412,7 @@ export default function SkillsPage() {
 
       <div className={styles.contentInner}>
         {/* Hero */}
-        <div className={styles.heroSection}>
+        <div className={`${styles.heroSection} animateFadeUp delay1`}>
           <div className={styles.heroText}>
             <h1 className={styles.heroTitle}>Skill Progression</h1>
             <p className={styles.heroSubtitle}>
@@ -434,7 +434,7 @@ export default function SkillsPage() {
 
         {/* Ongoing */}
         {ongoingSkills.length > 0 && (
-          <section className={styles.section}>
+          <section className={`${styles.section} animateFadeUp delay2`}>
             <div className={styles.sectionTitle}>
               <span className="material-symbols-outlined">rotate_right</span>
               <h3>Ongoing Skills</h3>
@@ -455,7 +455,7 @@ export default function SkillsPage() {
         )}
 
         {/* All Skills by Category */}
-        <section className={styles.section}>
+        <section className={`${styles.section} animateFadeUp delay3`}>
           <div className={styles.sectionTitle}>
             <span className="material-symbols-outlined">fitness_center</span>
             <h3>All Skills</h3>
@@ -488,7 +488,7 @@ export default function SkillsPage() {
 
         {/* Mastered */}
         {masteredSkills.length > 0 && (
-          <section className={styles.section}>
+          <section className={`${styles.section} animateFadeUp delay4`}>
             <div className={styles.sectionTitle}>
               <span className="material-symbols-outlined">verified</span>
               <h3>Mastered Skills</h3>

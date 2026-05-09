@@ -264,7 +264,7 @@ export default function SettingPage() {
     <>
       <AppHeader icon="settings" title="Settings" />
 
-      <div className={styles.contentInner}>
+      <div className={`${styles.contentInner} animateFadeUp delay1`}>
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Settings</h1>
           <p className={styles.pageSubtitle}>Personalize your CaliStrength training experience</p>
@@ -324,7 +324,7 @@ export default function SettingPage() {
               </div>
             </section>
 
-            <section className={styles.settingsSection} style={{ marginTop: '2rem' }}>
+            <section className={`${styles.settingsSection} animateFadeUp delay3`} style={{ marginTop: '2rem' }}>
               <div className={styles.sectionHeading}>
                 <span className="material-symbols-outlined">settings_accessibility</span>
                 <h3>Workout & Safety</h3>
@@ -393,7 +393,7 @@ export default function SettingPage() {
               </div>
             </section>
 
-            <section className={styles.settingsSection} style={{ marginTop: '2rem' }}>
+            <section className={`${styles.settingsSection} animateFadeUp delay4`} style={{ marginTop: '2rem' }}>
               <div className={styles.sectionHeading}>
                 <span className="material-symbols-outlined">palette</span>
                 <h3>Appearance</h3>

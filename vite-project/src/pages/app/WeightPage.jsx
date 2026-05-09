@@ -111,7 +111,19 @@ export default function WeightPage() {
       }))
     }
 
-    const recentHistory = [...weightHistory].slice(-NUM_BARS)
+    // Deduplicate by date — keep only the latest entry per day
+    const deduped = []
+    const seenDates = new Set()
+    const sortedHistory = [...weightHistory].sort((a, b) => parseStoredDate(a.date) - parseStoredDate(b.date))
+    for (let i = sortedHistory.length - 1; i >= 0; i--) {
+      const dateKey = toLocalDateStr(sortedHistory[i].date)
+      if (!seenDates.has(dateKey)) {
+        seenDates.add(dateKey)
+        deduped.unshift(sortedHistory[i])
+      }
+    }
+
+    const recentHistory = deduped.slice(-NUM_BARS)
     const weights = recentHistory.map(h => parseFloat(h.weight))
     const minW = Math.min(...weights)
     const maxW = Math.max(...weights)
@@ -157,7 +169,7 @@ export default function WeightPage() {
       <div className={styles.container}>
         
         {/* STATS ROW */}
-        <div className={styles.statsGrid}>
+        <div className={`${styles.statsGrid} animateFadeUp delay1`}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <p className={styles.cardLabel}>Cycle Status</p>
@@ -213,7 +225,7 @@ export default function WeightPage() {
         </div>
 
         {/* GRAPH SECTION */}
-        <div className={styles.graphSection}>
+        <div className={`${styles.graphSection} animateFadeUp delay2`}>
           <div className={styles.graphHeader}>
             <div className={styles.graphTitle}>
               <h3>Progress Graph</h3>
@@ -240,7 +252,7 @@ export default function WeightPage() {
         </div>
 
         {/* ADD WEIGHT FORM */}
-        <div className={styles.addWeightSection}>
+        <div className={`${styles.addWeightSection} animateFadeUp delay3`}>
           <h3>Add Today's Weight</h3>
           <form className={styles.weightForm} onSubmit={handleAddWeight}>
             <input 

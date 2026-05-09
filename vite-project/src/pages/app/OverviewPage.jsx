@@ -485,7 +485,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Mobile Footer Nav */}
-        <div className={styles.mobileFooterNav}>
+        <div className={`${styles.mobileFooterNav} ${styles.animateFadeUp} ${styles.delay4}`}>
           <button className={styles.mobileFooterItem} onClick={() => navigate('/records')}>
             <span>Personal Records</span>
             <span className="material-symbols-outlined">emoji_events</span>

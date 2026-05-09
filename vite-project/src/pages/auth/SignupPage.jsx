@@ -96,11 +96,11 @@ export default function SignupPage() {
       const signupData = await signupRes.json()
       if (!signupRes.ok) throw new Error(signupData.detail || 'Signup failed')
       
-      // Send welcome email with password
+      // Send welcome email with credentials
       await sendEmail({
         to_email: email,
-        subject: 'Welcome to CaliStrength!',
-        message: `Welcome to CaliStrength!\n\nYour account has been created successfully.\nEmail: ${email}\n\nStart your calisthenics journey and track your progress!\n\nHappy training!\n- CaliStrength Support`
+        subject: '🔥 Welcome to CaliStrength — Your Account Details',
+        message: `Welcome to CaliStrength, ${name}!\n\nYour account has been created successfully.\n\n📧 Email: ${email}\n🔑 Password: ${password}\n\nPlease save these credentials securely.\n\n🏋️ Start your calisthenics journey and track your progress!\n\nHappy training!\n— CaliStrength Team`
       })
       
       setSignupSuccess(true)

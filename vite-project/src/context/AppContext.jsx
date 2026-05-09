@@ -49,7 +49,18 @@ function mergeRemoteIntoLocal(local, remote) {
   const merged = { ...local }
 
   if (remote.weightHistory?.length > 0) {
-    merged.weightHistory = remote.weightHistory
+    // Deduplicate by date string
+    const uniqueWeights = []
+    const seenDates = new Set()
+    for (let i = remote.weightHistory.length - 1; i >= 0; i--) {
+      const entry = remote.weightHistory[i]
+      const dStr = toLocalDateStr(parseStoredDate(entry.date))
+      if (!seenDates.has(dStr)) {
+        seenDates.add(dStr)
+        uniqueWeights.unshift(entry)
+      }
+    }
+    merged.weightHistory = uniqueWeights
   }
   if (remote.workoutHistory?.length > 0) {
     merged.workoutHistory = remote.workoutHistory
@@ -111,17 +122,19 @@ async function fetchRemoteData() {
   }
 
   try {
-    const [meRes, workoutsRes, weightRes, recordsRes] = await Promise.all([
+    const [meRes, workoutsRes, weightRes, recordsRes, skillsRes] = await Promise.all([
       fetch(`${API}/auth/me`,             { headers }),
       fetch(`${API}/workouts/history`,    { headers }),
       fetch(`${API}/weight`,             { headers }),
       fetch(`${API}/records`,            { headers }),
+      fetch(`${API}/skills/user`,        { headers }),
     ])
 
     const me       = meRes.ok       ? await meRes.json()       : null
     const workouts = workoutsRes.ok ? await workoutsRes.json() : []
     const weight   = weightRes.ok   ? await weightRes.json()   : []
     const records  = recordsRes.ok  ? await recordsRes.json()  : []
+    const skills   = skillsRes.ok   ? await skillsRes.json()   : null
 
     // Normalize workout history: snake_case → camelCase
     const normalizedHistory = workouts.map(w => {
@@ -228,6 +241,7 @@ async function fetchRemoteData() {
         date: w.date,
         weight: w.weight_kg != null ? String(w.weight_kg) : (w.weight || '0'),
       })),
+      skills,
     }
   } catch (err) {
     console.warn('[AppContext] Could not fetch from MySQL backend:', err.message)
@@ -264,6 +278,17 @@ export function AppProvider({ children }) {
           saveLocalData(merged)
           return merged
         })
+        if (remote.skills) {
+          setSkillsDataRaw(prev => {
+            const next = { 
+              ...prev, 
+              ongoing: remote.skills.ongoing.map(s => s.skill_key), 
+              mastered: remote.skills.mastered.map(s => s.skill_key) 
+            }
+            localStorage.setItem('caliSkills', JSON.stringify(next))
+            return next
+          })
+        }
         // Apply theme from backend if present
         if (remote.profile?.theme) {
           applyTheme(remote.profile.theme)
