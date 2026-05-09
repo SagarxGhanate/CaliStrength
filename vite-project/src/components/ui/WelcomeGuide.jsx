@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useApp } from '../../context/AppContext'
+import { toLocalDateStr } from '../../utils/dateUtils'
 import styles from './WelcomeGuide.module.css'
 
 const STORAGE_KEY = 'calistrength_welcome_seen'
@@ -37,18 +39,36 @@ const STEPS = [
 ]
 
 export default function WelcomeGuide() {
+  const { appData } = useApp()
   const [visible, setVisible] = useState(false)
   const [step, setStep] = useState(0)
   const [exiting, setExiting] = useState(false)
 
   useEffect(() => {
-    // Only show if user has never seen it
+    // 1. If already seen on this device, skip
     const seen = localStorage.getItem(STORAGE_KEY)
     if (seen) return
 
+    // 2. Wait until appData is fully loaded from backend
+    const profile = appData?.profile
+    if (!profile || !profile.email) return // Not fully loaded yet
+
+    // 3. Only show on the EXACT day they joined
+    const todayStr = toLocalDateStr(new Date())
+    if (profile.startDate && profile.startDate !== todayStr) {
+      localStorage.setItem(STORAGE_KEY, '1') // Permanent skip on this device
+      return
+    }
+
+    // 4. If they have already done a workout, they don't need a welcome guide
+    if (appData?.workoutHistory?.length > 0) {
+      localStorage.setItem(STORAGE_KEY, '1') // Permanent skip on this device
+      return
+    }
+
     const timer = setTimeout(() => setVisible(true), 5000)
     return () => clearTimeout(timer)
-  }, [])
+  }, [appData])
 
   const close = () => {
     setExiting(true)
