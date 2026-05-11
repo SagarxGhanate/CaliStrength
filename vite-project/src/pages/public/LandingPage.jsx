@@ -16,9 +16,12 @@ export default function LandingPage() {
   const observerRef = useRef(null)
 
   useEffect(() => {
-    // If already logged in, maybe we don't force redirect, but change 'Login' to 'Dashboard'
-    // But we still let them view the landing page if they want.
-    
+    // If already logged in, redirect to dashboard automatically
+    if (isAuthenticated() && getStoredUser()?.is_onboarded) {
+      navigate('/dashboard', { replace: true })
+      return
+    }
+
     // Intersection Observer for scroll animations
     observerRef.current = new IntersectionObserver((entries) => {
       entries.forEach(entry => {

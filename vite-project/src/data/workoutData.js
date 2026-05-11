@@ -457,9 +457,73 @@ export function getTailoredWorkout(appData) {
   const age = appData.profile.age || 25;
   const weight = appData.weightHistory[0]?.weight || 70;
   const target = appData.profile.targetWeight || 70;
-  const height = appData.height || 175;
-  const experience = appData.experience || 'beginner';
+  const height = appData.height || appData.profile?.height || 175;
+  const experience = appData.experience || appData.profile?.experience || appData.level || 'beginner';
   
+  // ── Progressive Difficulty ──
+  // Determine how many days the user has been training
+  let daysSinceStart = 0;
+  if (appData.startDate) {
+    const start = new Date(appData.startDate);
+    start.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    daysSinceStart = Math.max(0, Math.floor((now - start) / 86400000));
+  }
+
+  // Difficulty classification for exercises
+  // 'hard' exercises are too tough for beginners (dips, handstands, burpees, pike pushups, pull-ups, etc.)
+  // 'medium' exercises require some base strength
+  // 'easy' exercises are beginner-friendly
+  const HARD_EXERCISES = [
+    'dips', 'wall handstand', 'handstand', 'pike push-up', 'pike push',
+    'diamond push-up', 'diamond push', 'decline push-up', 'decline push',
+    'burpee', 'pull-up', 'pull up', 'pullup', 'chin-up', 'chin up', 'chinup',
+    'wide grip', 'negative pull', 'muscle up', 'muscle-up',
+    'jumping pull', 'hanging leg raise', 'v-up', 'v up',
+    'hollow body rock', 'dragon flag', 'front lever',
+    'human flag', 'full planche', 'pistol squat',
+    'jump squat', 'box jump',
+  ];
+
+  const MEDIUM_EXERCISES = [
+    'dips', 'pike push-up', 'pike push', 'diamond push-up', 'diamond push',
+    'decline push-up', 'decline push', 'burpee',
+    'australian pull', 'bodyweight row', 'negative pull',
+    'jumping pull', 'hollow body hold', 'side plank dip',
+    'flutter kick', 'bicycle crunch', 'v-up', 'v up',
+    'jump squat', 'walking lunge',
+  ];
+
+  // Determine allowed difficulty based on experience + days
+  // Beginners: days 0-10 = easy only, days 11-20 = easy+medium, days 21+ = all
+  // Intermediate/Advanced: no restrictions
+  let allowedDifficulty = 'all'; // 'easy', 'easy+medium', 'all'
+  if (experience === 'beginner') {
+    if (daysSinceStart <= 10) {
+      allowedDifficulty = 'easy';
+    } else if (daysSinceStart <= 20) {
+      allowedDifficulty = 'easy+medium';
+    }
+  }
+
+  // Helper to classify exercise difficulty
+  const getExerciseDifficulty = (name) => {
+    const lower = name.toLowerCase();
+    if (HARD_EXERCISES.some(h => lower.includes(h))) return 'hard';
+    if (MEDIUM_EXERCISES.some(m => lower.includes(m))) return 'medium';
+    return 'easy';
+  };
+
+  // Helper to check if exercise is allowed at current difficulty level
+  const isExerciseAllowed = (name) => {
+    if (allowedDifficulty === 'all') return true;
+    const diff = getExerciseDifficulty(name);
+    if (allowedDifficulty === 'easy') return diff === 'easy';
+    if (allowedDifficulty === 'easy+medium') return diff === 'easy' || diff === 'medium';
+    return true;
+  };
+
   // Create a unique numeric seed
   const seedStr = `${age}-${weight}-${target}-${height}-${experience}-${goal}`;
   let seed = 0;
@@ -499,33 +563,86 @@ export function getTailoredWorkout(appData) {
   exercisePool.core = uniquePool(exercisePool.core);
   exercisePool.legs = uniquePool(exercisePool.legs);
 
+  // Calculate BMI to detect overweight users
+  const bmi = weight / ((height / 100) ** 2);
+  const isOverweight = bmi > 25;
+
   // For each split, randomly pick 5-7 exercises using the seeded random
   const generateSplit = (type) => {
-    const pool = exercisePool[type] || [];
+    let pool = exercisePool[type] || [];
     if (!pool.length) return [];
+
+    // ── Filter by progressive difficulty & BMI ──
+    if (allowedDifficulty !== 'all') {
+      let filtered = pool.filter(ex => isExerciseAllowed(ex.name));
+      // BMI Check: If overweight, avoid high-impact jumps
+      if (isOverweight) {
+        filtered = filtered.filter(ex => !ex.name.toLowerCase().includes('jump'));
+      }
+      // Only use filtered if we have at least 4 exercises
+      if (filtered.length >= 4) {
+        pool = filtered;
+      }
+    } else if (isOverweight) {
+      // Even if advanced, heavily overweight users shouldn't do crazy jumps
+      pool = pool.filter(ex => !ex.name.toLowerCase().includes('jump box'));
+    }
     
-    // Shuffle pool deterministically
+    // Shuffle pool deterministically using the unique seed
     const shuffled = [...pool].sort(() => random() - 0.5);
     
-    // Determine how many exercises based on experience
+    // Determine how many exercises based on experience and age
     let count = 7;
-    if (experience === 'intermediate') count = 7;
-    if (experience === 'advanced') count = 8;
+    if (experience === 'beginner' && daysSinceStart <= 10) count = 5; 
+    else if (experience === 'beginner') count = 6;
+    else if (experience === 'intermediate') count = 7;
+    else if (experience === 'advanced') count = 8;
+
+    // Age adjustment: Older athletes get slightly less volume but retain intensity
+    if (age > 45 && count > 5) count -= 1;
 
     const selected = shuffled.slice(0, count);
 
-    // Adjust sets and reps based on weight difference and experience
+    // Adjust sets and reps based precisely on the unique combination of user data
     return selected.map(ex => {
-       const wDiff = Math.abs(weight - target);
        let sets = experience === 'beginner' ? 3 : (experience === 'advanced' ? 5 : 4);
        let reps = typeof ex.reps === 'number' ? ex.reps : parseInt(ex.reps) || 10;
+
+       // 1. Base progression scaling
+       if (experience === 'beginner' && daysSinceStart <= 10) {
+         reps = Math.max(5, Math.floor(reps * 0.6));
+         sets = Math.min(sets, 3);
+       } else if (experience === 'beginner' && daysSinceStart <= 20) {
+         reps = Math.max(6, Math.floor(reps * 0.8));
+       }
        
-       if (goal === 'lose') reps += Math.floor(wDiff / 5);
-       if (goal === 'gain') { sets += 1; reps = Math.max(5, reps - 2); }
+       // 2. Goal scaling
+       const wDiff = weight - target;
+       if (goal === 'lose') {
+         // Need more endurance/cardio effect -> slightly higher reps
+         reps += Math.floor(Math.abs(wDiff) / 5);
+       }
+       if (goal === 'gain') {
+         // Need hypertrophy -> more sets, controlled reps
+         sets += 1; 
+         reps = Math.max(5, reps - 2); 
+       }
        
-       // Tweak reps slightly based on weight
+       // 3. Ultra-fine metric scaling (Guarantees different plans for slight data differences)
        if (typeof reps === 'number') {
-         reps += (weight % 3);
+         // Age penalty factor (older = slightly lower reps to protect joints, compensated by form)
+         const agePenalty = age > 30 ? Math.floor((age - 30) / 10) : 0;
+         reps = Math.max(5, reps - agePenalty);
+
+         // Weight micro-adjustment: Every 3kg difference alters the rep scheme
+         const weightMod = Math.floor(weight % 3);
+         if (weightMod === 1) reps += 1;
+         else if (weightMod === 2) reps -= 1;
+
+         // Height micro-adjustment: Taller people have longer levers, making calisthenics harder
+         if (height > 185 && ex.name.toLowerCase().includes('push')) {
+           reps = Math.max(5, reps - 1); // 1 less rep for long arms on pushups
+         }
        }
 
        return { ...ex, sets, reps: isNaN(reps) ? ex.reps : reps };
@@ -536,6 +653,20 @@ export function getTailoredWorkout(appData) {
   if (customWorkout.pull) customWorkout.pull.exercises = generateSplit('pull');
   if (customWorkout.core) customWorkout.core.exercises = generateSplit('core');
   if (customWorkout.legs) customWorkout.legs.exercises = generateSplit('legs');
+
+  // Age-based Warmup/Cooldown adjustments
+  if (age > 40) {
+    ['push', 'pull', 'core', 'legs'].forEach(split => {
+      if (customWorkout[split]) {
+        if (customWorkout[split].warmup) {
+           customWorkout[split].warmup.push({ name: 'Extra Joint Rotations', detail: '60 sec' });
+        }
+        if (customWorkout[split].duration) {
+           customWorkout[split].duration += 5; // Add 5 mins to expected duration
+        }
+      }
+    });
+  }
 
   return customWorkout;
 }

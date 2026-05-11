@@ -6,9 +6,9 @@ import { getTailoredWorkout } from '../../data/workoutData'
 import { filterWorkoutExercises } from '../../data/injuryFilter'
 import styles from './OverviewPage.module.css'
 import { computeNotifications } from '../../components/ui/NotificationsPanel'
-import { parseStoredDate } from '../../utils/dateUtils'
 import { getTodaySplitKey, getDayNumber } from '../../utils/workoutSplitUtils'
 import { formatRepsDisplay, isHoldExercise } from '../../utils/exerciseUtils'
+import { computeStreak } from '../../utils/streakUtils'
 
 /* ─── Helpers ─── */
 
@@ -17,58 +17,6 @@ function getTodaySplit(appData) {
   const splitKey = getTodaySplitKey(appData)
   const rawSplit = customPlan[splitKey] || customPlan.push
   return filterWorkoutExercises(rawSplit)
-}
-
-
-
-function computeStreak(workoutHistory = []) {
-  if (!workoutHistory.length) return 0
-  
-  // Build a Set of unique workout date strings (YYYY-MM-DD)
-  const workedDates = new Set(workoutHistory.map(w => {
-    const d = parseStoredDate(w.date || w.timestamp)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }))
-  
-  let streak = 0
-  const cur = new Date()
-  cur.setHours(0, 0, 0, 0)
-
-  // Walk backwards day by day from today
-  const check = new Date(cur)
-  
-  // If today is Sunday, skip it (rest day)
-  if (check.getDay() === 0) check.setDate(check.getDate() - 1)
-
-  // If today hasn't been worked out yet, check if yesterday (or last non-Sunday) was
-  const todayStr = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`
-  if (!workedDates.has(todayStr)) {
-    // Allow today to not be done yet — step back one day
-    check.setDate(check.getDate() - 1)
-    // Skip Sunday
-    if (check.getDay() === 0) check.setDate(check.getDate() - 1)
-  }
-
-  while (true) {
-    // Skip Sundays (rest days don't break streak)
-    if (check.getDay() === 0) {
-      check.setDate(check.getDate() - 1)
-      continue
-    }
-    
-    const dateStr = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`
-    if (workedDates.has(dateStr)) {
-      streak++
-      check.setDate(check.getDate() - 1)
-    } else {
-      break
-    }
-  }
-  
-  return streak
 }
 
 function getWeeklyProgress(workoutHistory = []) {

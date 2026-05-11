@@ -3,6 +3,7 @@ import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import { useNavigate } from 'react-router-dom'
 import { formatDateStandard, parseStoredDate, toLocalDateStr } from '../../utils/dateUtils'
+import { computeStreak } from '../../utils/streakUtils'
 import styles from './DailyReportPage.module.css'
 
 // Helper: get today's weekday label
@@ -43,34 +44,6 @@ function getRecentWeightData(weightHistory) {
   }
   
   return days
-}
-
-// Helper: compute streak accurately
-function computeStreak(workoutHistory = []) {
-  if (!workoutHistory.length) return 0
-  const dates = [...new Set(workoutHistory.map(w => {
-    const d = parseStoredDate(w.date || w.timestamp)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }))].sort().reverse()
-  
-  let streak = 0
-  let cur = new Date(); cur.setHours(0,0,0,0)
-  
-  for (const ds of dates) {
-    const [year, month, day] = ds.split('-')
-    const d = new Date(year, month - 1, day)
-    d.setHours(0,0,0,0)
-    
-    const diffDays = Math.round((cur - d) / 86400000)
-    if (diffDays <= 1) { 
-      if (diffDays === 1 || streak === 0) streak++; 
-      cur = d 
-    } else break
-  }
-  return streak
 }
 
 // Helper: get streak badge label based on 7-day tiers

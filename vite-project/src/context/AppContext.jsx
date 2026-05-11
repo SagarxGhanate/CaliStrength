@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { parseStoredDate, toLocalDateStr } from '../utils/dateUtils'
+import { computeLongestStreak } from '../utils/streakUtils'
 
 // ─── Default data shape (mirrors caliStrengthData) ────────────────────────
 const DEFAULT_DATA = {
@@ -75,20 +76,8 @@ function mergeRemoteIntoLocal(local, remote) {
       minutes: Math.floor((w.totalSeconds || 0) / 60),
     }))
 
-    // Compute longestStreak from workout history dates
-    const uniqueDates = [...new Set(remote.workoutHistory.map(w => toLocalDateStr(w.date)))].sort()
-    let longest = 0, current = 0, prevDate = null
-    for (const ds of uniqueDates) {
-      const d = parseStoredDate(ds); d.setHours(0,0,0,0)
-      if (!prevDate) { current = 1 }
-      else {
-        const diff = (d - prevDate) / 86400000
-        if (diff === 1) current++
-        else if (diff > 1) current = 1
-      }
-      if (current > longest) longest = current
-      prevDate = d
-    }
+    // Compute longestStreak from workout history (Sunday-aware)
+    const longest = computeLongestStreak(remote.workoutHistory)
     merged.longestStreak = Math.max(merged.longestStreak || 0, longest)
   }
 
