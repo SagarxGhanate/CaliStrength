@@ -63,7 +63,7 @@ export default function SignupPage() {
 
     // Full page reload so AppProvider remounts and fetches fresh from MySQL
     if (result.is_onboarded) {
-      window.location.href = '/'
+      window.location.href = '/dashboard'
     } else {
       window.location.href = '/onboarding'
     }

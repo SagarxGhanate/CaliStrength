@@ -9,6 +9,8 @@ import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
 import OnboardingPage from './pages/auth/OnboardingPage'
 
+import LandingPage from './pages/public/LandingPage'
+
 // App Pages
 import OverviewPage from './pages/app/OverviewPage'
 import WorkoutPage from './pages/app/WorkoutPage'
@@ -50,7 +52,7 @@ export default function App() {
       {/* Protected App Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/"             element={<OverviewPage />} />
+          <Route path="/dashboard"    element={<OverviewPage />} />
           <Route path="/workout"      element={<WorkoutPage />} />
           <Route path="/progress"     element={<ProgressPage />} />
           <Route path="/activity"     element={<ActivityPage />} />
@@ -66,8 +68,11 @@ export default function App() {
         </Route>
       </Route>
 
+      {/* Public Home Page */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

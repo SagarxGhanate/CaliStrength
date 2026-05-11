@@ -5,7 +5,7 @@ import darkLogo from '../../assets/Logo/Dark theme logo.png'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
 
 const NAV_LINKS = [
-  { to: '/',             icon: 'grid_view',             label: 'Overview' },
+  { to: '/dashboard',             icon: 'grid_view',             label: 'Overview' },
   { to: '/workout',      icon: 'exercise',              label: 'Workouts' },
   { to: '/progress',     icon: 'monitoring',            label: 'Progress' },
   { to: '/activity',     icon: 'local_fire_department', label: 'Activity' },
@@ -42,7 +42,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             onClick={onClose}
             className={({ isActive }) =>
               `${styles.navLink} ${isActive ? styles.active : ''}`
