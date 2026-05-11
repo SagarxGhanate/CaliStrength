@@ -247,17 +247,21 @@ export default function SettingPage() {
     } catch (err) {
       console.warn('Firebase sign-out error:', err)
     }
-    // Clear all auth & app data from localStorage
+    // Clear ALL auth & app data from localStorage
     localStorage.removeItem('cs_token')
     localStorage.removeItem('cs_user')
+    localStorage.removeItem('cs_login_at')
     localStorage.removeItem('caliStrengthData')
     localStorage.removeItem('cs_session_progress')
     localStorage.removeItem('cs_ai_chat')
     localStorage.removeItem('cs_ana_history')
     localStorage.removeItem('caliSkills')
     localStorage.removeItem('caliReadNotifs')
+    localStorage.removeItem('calistrength-theme')
     setShowLogoutConfirm(false)
-    navigate('/login')
+    // Full page reload to reset all React state (AppContext, etc.)
+    // navigate() would keep stale state in memory
+    window.location.href = '/login'
   }
 
   return (

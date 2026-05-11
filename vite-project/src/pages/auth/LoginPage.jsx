@@ -56,20 +56,18 @@ export default function LoginPage() {
     }))
     // Store login timestamp for 30-day session expiry
     localStorage.setItem('cs_login_at', Date.now().toString())
-    // Also update the existing caliStrengthData profile so the app UI works
-    const existing = JSON.parse(localStorage.getItem('caliStrengthData') || '{}')
-    existing.profile = {
-      ...existing.profile,
-      name: result.name,
-      email: result.email,
-      avatar: result.avatar || existing?.profile?.avatar || '',
-    }
-    localStorage.setItem('caliStrengthData', JSON.stringify(existing))
 
+    // Clear any stale app data from a previous session so AppContext
+    // starts fresh and hydrates exclusively from MySQL on next mount
+    localStorage.removeItem('caliStrengthData')
+    localStorage.removeItem('cs_session_progress')
+    localStorage.removeItem('caliSkills')
+
+    // Full page reload so AppProvider remounts and fetches fresh from MySQL
     if (!result.is_onboarded) {
-      navigate('/onboarding')
+      window.location.href = '/onboarding'
     } else {
-      navigate('/')
+      window.location.href = '/'
     }
   }
 

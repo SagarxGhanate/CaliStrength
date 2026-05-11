@@ -55,20 +55,17 @@ export default function SignupPage() {
     }))
     // Store login timestamp for 30-day session expiry
     localStorage.setItem('cs_login_at', Date.now().toString())
-    const existing = JSON.parse(localStorage.getItem('caliStrengthData') || '{}')
-    existing.profile = {
-      ...existing.profile,
-      name: result.name,
-      email: result.email,
-      avatar: result.avatar || '',
-    }
-    localStorage.setItem('caliStrengthData', JSON.stringify(existing))
 
-    // Returning user (already onboarded) → go straight to dashboard
+    // Clear any stale app data so AppContext hydrates fresh from MySQL
+    localStorage.removeItem('caliStrengthData')
+    localStorage.removeItem('cs_session_progress')
+    localStorage.removeItem('caliSkills')
+
+    // Full page reload so AppProvider remounts and fetches fresh from MySQL
     if (result.is_onboarded) {
-      navigate('/')
+      window.location.href = '/'
     } else {
-      navigate('/onboarding')
+      window.location.href = '/onboarding'
     }
   }
 

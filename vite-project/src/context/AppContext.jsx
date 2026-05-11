@@ -114,7 +114,10 @@ function mergeRemoteIntoLocal(local, remote) {
 // ── Fetch all user data from MySQL in one burst ───────────────────────────────
 async function fetchRemoteData() {
   const token = getToken()
-  if (!token) return null
+  if (!token) {
+    console.log('[AppContext] No token found, skipping remote fetch')
+    return null
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -122,6 +125,7 @@ async function fetchRemoteData() {
   }
 
   try {
+    console.log('[AppContext] Fetching remote data from MySQL...')
     const [meRes, workoutsRes, weightRes, recordsRes, skillsRes] = await Promise.all([
       fetch(`${API}/auth/me`,             { headers }),
       fetch(`${API}/workouts/history`,    { headers }),
@@ -130,11 +134,28 @@ async function fetchRemoteData() {
       fetch(`${API}/skills/user`,        { headers }),
     ])
 
+    // If auth failed (401), the token is invalid/expired — clear it
+    if (meRes.status === 401) {
+      console.warn('[AppContext] Token expired or invalid (401), clearing auth')
+      localStorage.removeItem('cs_token')
+      localStorage.removeItem('cs_user')
+      localStorage.removeItem('cs_login_at')
+      return null
+    }
+
     const me       = meRes.ok       ? await meRes.json()       : null
     const workouts = workoutsRes.ok ? await workoutsRes.json() : []
     const weight   = weightRes.ok   ? await weightRes.json()   : []
     const records  = recordsRes.ok  ? await recordsRes.json()  : []
     const skills   = skillsRes.ok   ? await skillsRes.json()   : null
+
+    console.log('[AppContext] Remote data received:', {
+      profile: !!me,
+      workouts: workouts.length,
+      weightLogs: weight.length,
+      records: records.length,
+      skills: !!skills,
+    })
 
     // Normalize workout history: snake_case → camelCase
     const normalizedHistory = workouts.map(w => {
