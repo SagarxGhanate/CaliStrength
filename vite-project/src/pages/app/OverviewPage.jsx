@@ -9,6 +9,7 @@ import { computeNotifications } from '../../components/ui/NotificationsPanel'
 import { getTodaySplitKey, getDayNumber } from '../../utils/workoutSplitUtils'
 import { formatRepsDisplay, isHoldExercise } from '../../utils/exerciseUtils'
 import { computeStreak } from '../../utils/streakUtils'
+import { parseStoredDate } from '../../utils/dateUtils'
 
 /* ─── Helpers ─── */
 
