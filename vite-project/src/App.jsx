@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import AppLayout from './components/layout/AppLayout'
 import ProtectedRoute from './components/ui/ProtectedRoute'
+import SplashScreen from './components/ui/SplashScreen'
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage'
@@ -23,6 +25,21 @@ import CreditsPage from './pages/app/CreditsPage'
 import ResourcesPage from './pages/app/ResourcesPage'
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('splashShown')
+  })
+
+  if (showSplash) {
+    return (
+      <SplashScreen 
+        onComplete={() => {
+          setShowSplash(false)
+          sessionStorage.setItem('splashShown', 'true')
+        }} 
+      />
+    )
+  }
+
   return (
     <Routes>
       {/* Public / Auth Routes */}
