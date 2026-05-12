@@ -445,6 +445,16 @@ fit: {
 }
 };
 
+/**
+ * Exercises that are too advanced for beginners in their first 15 days.
+ * These require significant strength/balance that new users haven't built yet.
+ */
+const ADVANCED_FOR_BEGINNERS = [
+  'Wall Handstand Hold', 'Diamond Push-ups', 'Wide Grip Pull-ups',
+  'Negative Pull-ups', 'V-Ups', 'Hollow Body Rock', 'Side Plank Dips',
+  'Hanging Leg Raises', 'Jumping Pull-ups', 'Decline Push-ups',
+];
+
 export function getTailoredWorkout(appData) {
   const goal = appData?.goal || 'fit';
   const baseWorkout = ALL_WORKOUTS[goal] || ALL_WORKOUTS['fit'];
@@ -453,30 +463,54 @@ export function getTailoredWorkout(appData) {
     return baseWorkout;
   }
 
-  // The deterministic seed based on exact metrics
+  // ── Progressive Overload: Calculate training phase ──
+  let dayNumber = 1;
+  if (appData?.startDate) {
+    const start = new Date(appData.startDate);
+    start.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    dayNumber = Math.max(1, Math.floor((now - start) / 86400000) + 1);
+  }
+
+  // Phase changes every 15 days (0-indexed)
+  // Phase 0 = days 1-15, Phase 1 = days 16-30, Phase 2 = days 31-45, etc.
+  const phase = Math.floor((dayNumber - 1) / 15);
+
+  // Cumulative difficulty multiplier:
+  // Phase 0: 1.00x (base)
+  // Phase 1: 1.10x (+10%)
+  // Phase 2: 1.265x (+15% on top)
+  // Phase 3: 1.39x  (+10%)
+  // Phase 4: 1.60x  (+15%)
+  // Alternates between +10% and +15% increments
+  let difficultyMultiplier = 1.0;
+  for (let p = 1; p <= phase; p++) {
+    const increment = p % 2 === 1 ? 0.10 : 0.15;
+    difficultyMultiplier *= (1 + increment);
+  }
+
   const age = appData.profile.age || 25;
   const weight = appData.weightHistory[0]?.weight || 70;
   const target = appData.profile.targetWeight || 70;
   const height = appData.height || 175;
   const experience = appData.experience || 'beginner';
-  
-  // Create a unique numeric seed
-  const seedStr = `${age}-${weight}-${target}-${height}-${experience}-${goal}`;
+
+  // Include phase in the seed so exercises change every 15 days for variety
+  const seedStr = `${age}-${weight}-${target}-${height}-${experience}-${goal}-p${phase}`;
   let seed = 0;
   for (let i = 0; i < seedStr.length; i++) {
     seed = (seed * 31 + seedStr.charCodeAt(i)) % 1000000007;
   }
 
-  // Simple pseudo-random function
   const random = () => {
     seed = (seed * 16807) % 2147483647;
     return (Math.abs(seed) - 1) / 2147483646;
   };
 
-  // Deeply clone the base workout to not mutate ALL_WORKOUTS
   const customWorkout = JSON.parse(JSON.stringify(baseWorkout));
 
-  // Gather all available exercises across all goals & splits to act as our "AI DB"
+  // Gather all available exercises across all goals & splits
   const exercisePool = { push: [], pull: [], core: [], legs: [] };
   Object.values(ALL_WORKOUTS).forEach(g => {
     if (g.push) exercisePool.push.push(...g.push.exercises);
@@ -499,33 +533,55 @@ export function getTailoredWorkout(appData) {
   exercisePool.core = uniquePool(exercisePool.core);
   exercisePool.legs = uniquePool(exercisePool.legs);
 
-  // For each split, randomly pick 5-7 exercises using the seeded random
+  // ── Beginner Difficulty Filtering ──
+  // Phase 0 (first 15 days): Remove advanced exercises for beginners
+  // Phase 1+ (after 15 days): Gradually allow all exercises
+  if (experience === 'beginner' && phase === 0) {
+    Object.keys(exercisePool).forEach(key => {
+      exercisePool[key] = exercisePool[key].filter(ex =>
+        !ADVANCED_FOR_BEGINNERS.includes(ex.name)
+      );
+    });
+  }
+
   const generateSplit = (type) => {
     const pool = exercisePool[type] || [];
     if (!pool.length) return [];
-    
-    // Shuffle pool deterministically
+
     const shuffled = [...pool].sort(() => random() - 0.5);
-    
-    // Determine how many exercises based on experience
+
+    // Base exercise count by experience
     let count = 5;
     if (experience === 'intermediate') count = 6;
     if (experience === 'advanced') count = 7;
 
+    // Add 1 extra exercise every 3 phases (45 days) for progressive variety
+    count += Math.min(Math.floor(phase / 3), 2);
+    count = Math.min(count, shuffled.length);
+
     const selected = shuffled.slice(0, count);
 
-    // Adjust sets and reps based on weight difference and experience
     return selected.map(ex => {
        const wDiff = Math.abs(weight - target);
        let sets = experience === 'beginner' ? 3 : (experience === 'advanced' ? 5 : 4);
        let reps = typeof ex.reps === 'number' ? ex.reps : parseInt(ex.reps) || 10;
-       
+
        if (goal === 'lose') reps += Math.floor(wDiff / 5);
        if (goal === 'gain') { sets += 1; reps = Math.max(5, reps - 2); }
-       
-       // Tweak reps slightly based on weight
+
        if (typeof reps === 'number') {
          reps += (weight % 3);
+       }
+
+       // ── Progressive Overload: scale reps by difficulty multiplier ──
+       if (typeof reps === 'number') {
+         reps = Math.round(reps * difficultyMultiplier);
+       }
+
+       // ── Progressive Overload: add extra set every 2 phases (30 days) ──
+       if (phase >= 2) {
+         sets += Math.floor(phase / 2);
+         sets = Math.min(sets, 6); // Cap at 6 sets max
        }
 
        return { ...ex, sets, reps: isNaN(reps) ? ex.reps : reps };
@@ -539,3 +595,4 @@ export function getTailoredWorkout(appData) {
 
   return customWorkout;
 }
+
