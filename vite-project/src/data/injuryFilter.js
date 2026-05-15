@@ -26,6 +26,70 @@ const LIGHT_ALTERNATIVES = {
   ],
 }
 
+// ── Injury-safe exercises to ADD during "light" mode ──
+const INJURY_SAFE_EXERCISES = {
+  shoulder: [
+    { name: 'High Plank Hold', sets: 2, reps: '30s', desc: 'Gentle shoulder stabilization — keep core tight, shoulders packed', img: '/Assets/plank hold.png' },
+  ],
+  elbow: [
+    { name: 'High Plank Hold', sets: 2, reps: '30s', desc: 'Straight arm hold — no elbow bending required', img: '/Assets/plank hold.png' },
+  ],
+  wrist: [
+    { name: 'High Plank Hold', sets: 2, reps: '20s', desc: 'Spread fingers wide for even pressure — stop if painful', img: '/Assets/plank hold.png' },
+  ],
+  chest: [
+    { name: 'High Plank Hold', sets: 2, reps: '30s', desc: 'Isometric hold — minimal chest strain', img: '/Assets/plank hold.png' },
+  ],
+  neck: [
+    { name: 'High Plank Hold', sets: 2, reps: '30s', desc: 'Keep neck neutral — eyes between hands', img: '/Assets/plank hold.png' },
+  ],
+  knee: [
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Partial squat — only go to pain-free depth', img: '/Assets/Squats.png' },
+    { name: 'Deep Squat Hold', sets: 2, reps: '15s', desc: 'Assisted deep squat — hold chair or doorframe for support', img: '/Assets/Squats.png' },
+  ],
+  ankle: [
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Gentle ankle mobility — pain-free range only', img: '/Assets/Squats.png' },
+    { name: 'Deep Squat Hold', sets: 2, reps: '15s', desc: 'Slow controlled hold — focus on ankle flexibility', img: '/Assets/Squats.png' },
+  ],
+  shin: [
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Zero impact hold — gentle on shins', img: '/Assets/Squats.png' },
+  ],
+  hamstring: [
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Controlled depth — ease hamstring tension', img: '/Assets/Squats.png' },
+    { name: 'Deep Squat Hold', sets: 2, reps: '15s', desc: 'Hip opening hold — gentle hamstring lengthening', img: '/Assets/Squats.png' },
+  ],
+  hip: [
+    { name: 'Deep Squat Hold', sets: 2, reps: '20s', desc: 'Open hips gently — use support if needed', img: '/Assets/Squats.png' },
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Partial squat — pain-free hip range', img: '/Assets/Squats.png' },
+  ],
+  calf: [
+    { name: 'Squat Hold', sets: 2, reps: '20s', desc: 'Flat foot hold — no calf engagement needed', img: '/Assets/Squats.png' },
+  ],
+  back: [
+    { name: 'Bird Dog Hold', sets: 2, reps: '20s each side', desc: 'Gentle back stabilization — opposite arm and leg', img: '/Assets/Superman hold.png' },
+  ],
+  'lower back': [
+    { name: 'Bird Dog Hold', sets: 2, reps: '20s each side', desc: 'Safe lower back exercise — keep spine neutral', img: '/Assets/Superman hold.png' },
+  ],
+}
+
+// ── Stretches to append at the END of workout for injured body part ──
+const INJURY_STRETCHES = {
+  shoulder: { name: '🧘 Shoulder Stretch', sets: 1, reps: '45s each side', desc: 'Cross-body shoulder stretch — hold gently, no bouncing', img: '' },
+  elbow: { name: '🧘 Forearm & Elbow Stretch', sets: 1, reps: '30s each arm', desc: 'Extend arm, gently pull fingers back and then forward', img: '' },
+  wrist: { name: '🧘 Wrist Stretch', sets: 1, reps: '30s each wrist', desc: 'Prayer stretch — press palms together, lower to waist height', img: '' },
+  chest: { name: '🧘 Chest Opener Stretch', sets: 1, reps: '45s', desc: 'Doorway stretch — arms at 90°, lean forward gently', img: '' },
+  neck: { name: '🧘 Neck Stretch', sets: 1, reps: '30s each side', desc: 'Gentle lateral neck stretch — ear toward shoulder', img: '' },
+  knee: { name: '🧘 Quad & Knee Stretch', sets: 1, reps: '30s each leg', desc: 'Standing quad stretch — hold wall for balance', img: '' },
+  ankle: { name: '🧘 Ankle Mobility Stretch', sets: 1, reps: '30s each ankle', desc: 'Slow ankle circles then calf stretch against wall', img: '' },
+  shin: { name: '🧘 Shin Stretch', sets: 1, reps: '30s each leg', desc: 'Kneel and sit on heels — stretch front of shin', img: '' },
+  hamstring: { name: '🧘 Hamstring Stretch', sets: 1, reps: '45s each leg', desc: 'Standing forward fold — keep slight knee bend', img: '' },
+  hip: { name: '🧘 Hip Flexor Stretch', sets: 1, reps: '45s each side', desc: 'Low lunge position — push hips forward gently', img: '' },
+  calf: { name: '🧘 Calf Stretch', sets: 1, reps: '30s each leg', desc: 'Wall calf stretch — heel pressed to ground', img: '' },
+  back: { name: '🧘 Back Stretch', sets: 1, reps: '45s', desc: "Child's pose — arms extended, sink hips to heels", img: '' },
+  'lower back': { name: '🧘 Lower Back Stretch', sets: 1, reps: '45s', desc: 'Knees-to-chest stretch — hug both knees lying down', img: '' },
+}
+
 export function isExerciseRelatedToPart(exName, part) {
   const name = exName.toLowerCase().replace(/⚠️\s*/g, '')
   const p = part.toLowerCase()
@@ -76,118 +140,62 @@ export function filterWorkoutExercises(workoutDataObj) {
   const clone = JSON.parse(JSON.stringify(workoutDataObj))
 
   const allInjuries = getActiveInjuries()
-
   if (!allInjuries || allInjuries.length === 0) return clone
 
-  // Separate "Remove" and "Light" injuries
-  const excludeExercises = allInjuries.filter(i => i.mode === 'exclude_exercise').map(i => i.part.toLowerCase())
-  const removeParts = allInjuries.filter(i => i.mode === 'remove').map(i => i.part)
+  const removeParts = allInjuries.filter(i => i.mode !== 'light').map(i => i.part)
   const lightInjuries = allInjuries.filter(i => i.mode === 'light')
-  const lightParts = lightInjuries.map(i => i.part)
 
-  // Determine what body parts are affected (Remove)
-  const skipLowerBody = removeParts.some(i => ['knee', 'shin', 'ankle', 'hamstring', 'calf', 'hip', 'lower back'].includes(i))
-  const skipUpperBodyPush = removeParts.some(i => ['shoulder', 'elbow', 'wrist', 'neck', 'chest'].includes(i))
-  const skipUpperBodyPull = removeParts.some(i => ['shoulder', 'elbow', 'wrist', 'back'].includes(i))
-
-  // Determine what body parts are affected (Light)
-  const skipLightLowerBody = lightParts.some(i => ['knee', 'shin', 'ankle', 'hamstring', 'calf', 'hip', 'lower back'].includes(i))
-  const skipLightUpperBodyPush = lightParts.some(i => ['shoulder', 'elbow', 'wrist', 'neck', 'chest'].includes(i))
-  const skipLightUpperBodyPull = lightParts.some(i => ['shoulder', 'elbow', 'wrist', 'back'].includes(i))
-
-  // Handle Specific Exercise Removals
-  if (excludeExercises.length > 0) {
-    clone.exercises = clone.exercises.filter(ex => {
-      // Remove if any excluded string is found in the exercise name
-      return !excludeExercises.some(excludedStr => ex.name.toLowerCase().includes(excludedStr))
-    })
+  // ── REMOVE MODE: Completely remove affected exercises, no replacements ──
+  if (removeParts.length > 0) {
+    clone.exercises = clone.exercises.filter(ex =>
+      !removeParts.some(part => isExerciseRelatedToPart(ex.name, part))
+    )
   }
 
-  // Handle "Remove" Injuries
-  if (skipLowerBody) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('squat') &&
-      !ex.name.toLowerCase().includes('lunge') &&
-      !ex.name.toLowerCase().includes('jump') &&
-      !ex.name.toLowerCase().includes('calf')
-    )
-    if (clone.title?.includes('Leg') || clone.title?.includes('Lower') || clone.label?.includes('Leg'))
-      clone.exercises.push(...JSON.parse(JSON.stringify(LIGHT_ALTERNATIVES.lowerBody)))
-  } else if (skipLightLowerBody) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('pistol') &&
-      !ex.name.toLowerCase().includes('jump')
-    )
-    if (clone.title?.includes('Leg') || clone.title?.includes('Lower') || clone.label?.includes('Leg')) {
-      const added = LIGHT_ALTERNATIVES.lowerBody.filter(a => !clone.exercises.some(e => e.name === a.name))
-      clone.exercises.push(...JSON.parse(JSON.stringify(added.slice(0, 2))))
-    }
-  }
+  // ── LIGHT MODE: Reduce to 2 sets, add safe exercises + stretch at end ──
+  if (lightInjuries.length > 0) {
+    const safeToAdd = []
+    const stretchesToAdd = []
 
-  if (skipUpperBodyPush) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('push-up') &&
-      !ex.name.toLowerCase().includes('dip') &&
-      !ex.name.toLowerCase().includes('burpee') &&
-      !ex.name.toLowerCase().includes('handstand')
-    )
-    if (clone.title?.includes('Push') || clone.title?.includes('Upper'))
-      clone.exercises.push(...JSON.parse(JSON.stringify(LIGHT_ALTERNATIVES.upperPush)))
-  } else if (skipLightUpperBodyPush) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('dip') &&
-      !ex.name.toLowerCase().includes('handstand') &&
-      !ex.name.toLowerCase().includes('pike') &&
-      !ex.name.toLowerCase().includes('burpee')
-    )
-    if (clone.title?.includes('Push') || clone.title?.includes('Upper')) {
-      const added = LIGHT_ALTERNATIVES.upperPush.filter(a => !clone.exercises.some(e => e.name === a.name))
-      clone.exercises.push(...JSON.parse(JSON.stringify(added.slice(0, 2))))
-    }
-  }
-
-  if (skipUpperBodyPull) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('pull-up') &&
-      !ex.name.toLowerCase().includes('chin-up') &&
-      !ex.name.toLowerCase().includes('row')
-    )
-    if (clone.title?.includes('Pull') || clone.title?.includes('Upper'))
-      clone.exercises.push(...JSON.parse(JSON.stringify(LIGHT_ALTERNATIVES.upperPull)))
-  } else if (skipLightUpperBodyPull) {
-    clone.exercises = clone.exercises.filter(ex =>
-      !ex.name.toLowerCase().includes('wide') &&
-      !ex.name.toLowerCase().includes('negative')
-    )
-    if (clone.title?.includes('Pull') || clone.title?.includes('Upper')) {
-      const added = LIGHT_ALTERNATIVES.upperPull.filter(a => !clone.exercises.some(e => e.name === a.name))
-      clone.exercises.push(...JSON.parse(JSON.stringify(added.slice(0, 2))))
-    }
-  }
-
-  // Handle "Light" Injuries (Reduce sets, cap at 3, mark with ⚠️)
-  const isLightAlternative = (name) => {
-    return LIGHT_ALTERNATIVES.lowerBody.some(l => l.name === name) ||
-           LIGHT_ALTERNATIVES.upperPush.some(l => l.name === name) ||
-           LIGHT_ALTERNATIVES.upperPull.some(l => l.name === name)
-  }
-
-  lightInjuries.forEach(inj => {
-    clone.exercises.forEach(ex => {
-      if (isExerciseRelatedToPart(ex.name, inj.part) && !isLightAlternative(ex.name)) {
-        if (!ex.name.includes('⚠️')) {
-
-          // Cap sets to max 3
-          if (typeof ex.sets === 'number') {
-            ex.sets = Math.min(ex.sets - 1, 3)
-            if (ex.sets < 2) ex.sets = 2
-          }
+    lightInjuries.forEach(inj => {
+      // 1. Reduce sets to exactly 2 for affected exercises & mark them
+      clone.exercises.forEach(ex => {
+        if (isExerciseRelatedToPart(ex.name, inj.part) && !ex.name.includes('⚠️')) {
+          ex.sets = 2
           ex.name = '⚠️ ' + ex.name
-          ex.desc = '⚠️ INJURY MODE — Reduced sets. Focus on slow, pain-free tempo. ' + ex.desc
+          ex.desc = '⚠️ INJURY MODE — 2 sets only. Focus on slow, pain-free tempo. ' + ex.desc
         }
+      })
+
+      // 2. Collect injury-safe exercises (High Plank Hold, Squat Hold, etc.)
+      const safeExercises = INJURY_SAFE_EXERCISES[inj.part] || []
+      safeExercises.forEach(safe => {
+        if (!safeToAdd.some(e => e.name === safe.name)) {
+          safeToAdd.push(JSON.parse(JSON.stringify(safe)))
+        }
+      })
+
+      // 3. Collect stretch for this injured part
+      const stretch = INJURY_STRETCHES[inj.part]
+      if (stretch && !stretchesToAdd.some(e => e.name === stretch.name)) {
+        stretchesToAdd.push(JSON.parse(JSON.stringify(stretch)))
       }
     })
-  })
+
+    // Append safe exercises (avoid duplicates with existing)
+    safeToAdd.forEach(safe => {
+      if (!clone.exercises.some(e => e.name === safe.name || e.name === '⚠️ ' + safe.name)) {
+        clone.exercises.push(safe)
+      }
+    })
+
+    // Append stretches at the very end of exercises
+    stretchesToAdd.forEach(stretch => {
+      if (!clone.exercises.some(e => e.name === stretch.name)) {
+        clone.exercises.push(stretch)
+      }
+    })
+  }
 
   // Deduplicate
   const seen = new Set()

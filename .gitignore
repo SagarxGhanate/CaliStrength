@@ -82,3 +82,9 @@ serviceAccountKey.json
 
 # OS generated files
 Thumbs.db
+
+# Archives
+*.zip
+
+# Temp scripts
+*.ps1

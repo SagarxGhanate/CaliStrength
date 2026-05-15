@@ -445,6 +445,16 @@ fit: {
 }
 };
 
+/**
+ * Exercises that are too advanced for beginners in their first 15 days.
+ * These require significant strength/balance that new users haven't built yet.
+ */
+const ADVANCED_FOR_BEGINNERS = [
+  'Wall Handstand Hold', 'Diamond Push-ups', 'Wide Grip Pull-ups',
+  'Negative Pull-ups', 'V-Ups', 'Hollow Body Rock', 'Side Plank Dips',
+  'Hanging Leg Raises', 'Jumping Pull-ups', 'Decline Push-ups',
+];
+
 export function getTailoredWorkout(appData) {
   const goal = appData?.goal || 'fit';
   const baseWorkout = ALL_WORKOUTS[goal] || ALL_WORKOUTS['fit'];
@@ -453,94 +463,54 @@ export function getTailoredWorkout(appData) {
     return baseWorkout;
   }
 
-  // The deterministic seed based on exact metrics
-  const age = appData.profile.age || 25;
-  const weight = appData.weightHistory[0]?.weight || 70;
-  const target = appData.profile.targetWeight || 70;
-  const height = appData.height || appData.profile?.height || 175;
-  const experience = appData.experience || appData.profile?.experience || appData.level || 'beginner';
-  
-  // ── Progressive Difficulty ──
-  // Determine how many days the user has been training
-  let daysSinceStart = 0;
-  if (appData.startDate) {
+  // ── Progressive Overload: Calculate training phase ──
+  let dayNumber = 1;
+  if (appData?.startDate) {
     const start = new Date(appData.startDate);
     start.setHours(0, 0, 0, 0);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    daysSinceStart = Math.max(0, Math.floor((now - start) / 86400000));
+    dayNumber = Math.max(1, Math.floor((now - start) / 86400000) + 1);
   }
 
-  // Difficulty classification for exercises
-  // 'hard' exercises are too tough for beginners (dips, handstands, burpees, pike pushups, pull-ups, etc.)
-  // 'medium' exercises require some base strength
-  // 'easy' exercises are beginner-friendly
-  const HARD_EXERCISES = [
-    'dips', 'wall handstand', 'handstand', 'pike push-up', 'pike push',
-    'diamond push-up', 'diamond push', 'decline push-up', 'decline push',
-    'burpee', 'pull-up', 'pull up', 'pullup', 'chin-up', 'chin up', 'chinup',
-    'wide grip', 'negative pull', 'muscle up', 'muscle-up',
-    'jumping pull', 'hanging leg raise', 'v-up', 'v up',
-    'hollow body rock', 'dragon flag', 'front lever',
-    'human flag', 'full planche', 'pistol squat',
-    'jump squat', 'box jump',
-  ];
+  // Phase changes every 15 days (0-indexed)
+  // Phase 0 = days 1-15, Phase 1 = days 16-30, Phase 2 = days 31-45, etc.
+  const phase = Math.floor((dayNumber - 1) / 15);
 
-  const MEDIUM_EXERCISES = [
-    'dips', 'pike push-up', 'pike push', 'diamond push-up', 'diamond push',
-    'decline push-up', 'decline push', 'burpee',
-    'australian pull', 'bodyweight row', 'negative pull',
-    'jumping pull', 'hollow body hold', 'side plank dip',
-    'flutter kick', 'bicycle crunch', 'v-up', 'v up',
-    'jump squat', 'walking lunge',
-  ];
-
-  // Determine allowed difficulty based on experience + days
-  // Beginners: days 0-10 = easy only, days 11-20 = easy+medium, days 21+ = all
-  // Intermediate/Advanced: no restrictions
-  let allowedDifficulty = 'all'; // 'easy', 'easy+medium', 'all'
-  if (experience === 'beginner') {
-    if (daysSinceStart <= 10) {
-      allowedDifficulty = 'easy';
-    } else if (daysSinceStart <= 20) {
-      allowedDifficulty = 'easy+medium';
-    }
+  // Cumulative difficulty multiplier:
+  // Phase 0: 1.00x (base)
+  // Phase 1: 1.10x (+10%)
+  // Phase 2: 1.265x (+15% on top)
+  // Phase 3: 1.39x  (+10%)
+  // Phase 4: 1.60x  (+15%)
+  // Alternates between +10% and +15% increments
+  let difficultyMultiplier = 1.0;
+  for (let p = 1; p <= phase; p++) {
+    const increment = p % 2 === 1 ? 0.10 : 0.15;
+    difficultyMultiplier *= (1 + increment);
   }
 
-  // Helper to classify exercise difficulty
-  const getExerciseDifficulty = (name) => {
-    const lower = name.toLowerCase();
-    if (HARD_EXERCISES.some(h => lower.includes(h))) return 'hard';
-    if (MEDIUM_EXERCISES.some(m => lower.includes(m))) return 'medium';
-    return 'easy';
-  };
+  const age = appData.profile.age || 25;
+  const weight = appData.weightHistory[0]?.weight || 70;
+  const target = appData.profile.targetWeight || 70;
+  const height = appData.height || 175;
+  const experience = appData.experience || 'beginner';
 
-  // Helper to check if exercise is allowed at current difficulty level
-  const isExerciseAllowed = (name) => {
-    if (allowedDifficulty === 'all') return true;
-    const diff = getExerciseDifficulty(name);
-    if (allowedDifficulty === 'easy') return diff === 'easy';
-    if (allowedDifficulty === 'easy+medium') return diff === 'easy' || diff === 'medium';
-    return true;
-  };
-
-  // Create a unique numeric seed
-  const seedStr = `${age}-${weight}-${target}-${height}-${experience}-${goal}`;
+  // Include phase in the seed so exercises change every 15 days for variety
+  const seedStr = `${age}-${weight}-${target}-${height}-${experience}-${goal}-p${phase}`;
   let seed = 0;
   for (let i = 0; i < seedStr.length; i++) {
     seed = (seed * 31 + seedStr.charCodeAt(i)) % 1000000007;
   }
 
-  // Simple pseudo-random function
   const random = () => {
     seed = (seed * 16807) % 2147483647;
     return (Math.abs(seed) - 1) / 2147483646;
   };
 
-  // Deeply clone the base workout to not mutate ALL_WORKOUTS
   const customWorkout = JSON.parse(JSON.stringify(baseWorkout));
 
-  // Gather all available exercises across all goals & splits to act as our "AI DB"
+  // Gather all available exercises across all goals & splits
   const exercisePool = { push: [], pull: [], core: [], legs: [] };
   Object.values(ALL_WORKOUTS).forEach(g => {
     if (g.push) exercisePool.push.push(...g.push.exercises);
@@ -563,86 +533,55 @@ export function getTailoredWorkout(appData) {
   exercisePool.core = uniquePool(exercisePool.core);
   exercisePool.legs = uniquePool(exercisePool.legs);
 
-  // Calculate BMI to detect overweight users
-  const bmi = weight / ((height / 100) ** 2);
-  const isOverweight = bmi > 25;
+  // ── Beginner Difficulty Filtering ──
+  // Phase 0 (first 15 days): Remove advanced exercises for beginners
+  // Phase 1+ (after 15 days): Gradually allow all exercises
+  if (experience === 'beginner' && phase === 0) {
+    Object.keys(exercisePool).forEach(key => {
+      exercisePool[key] = exercisePool[key].filter(ex =>
+        !ADVANCED_FOR_BEGINNERS.includes(ex.name)
+      );
+    });
+  }
 
-  // For each split, randomly pick 5-7 exercises using the seeded random
   const generateSplit = (type) => {
-    let pool = exercisePool[type] || [];
+    const pool = exercisePool[type] || [];
     if (!pool.length) return [];
 
-    // ── Filter by progressive difficulty & BMI ──
-    if (allowedDifficulty !== 'all') {
-      let filtered = pool.filter(ex => isExerciseAllowed(ex.name));
-      // BMI Check: If overweight, avoid high-impact jumps
-      if (isOverweight) {
-        filtered = filtered.filter(ex => !ex.name.toLowerCase().includes('jump'));
-      }
-      // Only use filtered if we have at least 4 exercises
-      if (filtered.length >= 4) {
-        pool = filtered;
-      }
-    } else if (isOverweight) {
-      // Even if advanced, heavily overweight users shouldn't do crazy jumps
-      pool = pool.filter(ex => !ex.name.toLowerCase().includes('jump box'));
-    }
-    
-    // Shuffle pool deterministically using the unique seed
     const shuffled = [...pool].sort(() => random() - 0.5);
-    
-    // Determine how many exercises based on experience and age
-    let count = 7;
-    if (experience === 'beginner' && daysSinceStart <= 10) count = 5; 
-    else if (experience === 'beginner') count = 6;
-    else if (experience === 'intermediate') count = 7;
-    else if (experience === 'advanced') count = 8;
 
-    // Age adjustment: Older athletes get slightly less volume but retain intensity
-    if (age > 45 && count > 5) count -= 1;
+    // Base exercise count by experience
+    let count = 5;
+    if (experience === 'intermediate') count = 6;
+    if (experience === 'advanced') count = 7;
+
+    // Add 1 extra exercise every 3 phases (45 days) for progressive variety
+    count += Math.min(Math.floor(phase / 3), 2);
+    count = Math.min(count, shuffled.length);
 
     const selected = shuffled.slice(0, count);
 
-    // Adjust sets and reps based precisely on the unique combination of user data
     return selected.map(ex => {
+       const wDiff = Math.abs(weight - target);
        let sets = experience === 'beginner' ? 3 : (experience === 'advanced' ? 5 : 4);
        let reps = typeof ex.reps === 'number' ? ex.reps : parseInt(ex.reps) || 10;
 
-       // 1. Base progression scaling
-       if (experience === 'beginner' && daysSinceStart <= 10) {
-         reps = Math.max(5, Math.floor(reps * 0.6));
-         sets = Math.min(sets, 3);
-       } else if (experience === 'beginner' && daysSinceStart <= 20) {
-         reps = Math.max(6, Math.floor(reps * 0.8));
-       }
-       
-       // 2. Goal scaling
-       const wDiff = weight - target;
-       if (goal === 'lose') {
-         // Need more endurance/cardio effect -> slightly higher reps
-         reps += Math.floor(Math.abs(wDiff) / 5);
-       }
-       if (goal === 'gain') {
-         // Need hypertrophy -> more sets, controlled reps
-         sets += 1; 
-         reps = Math.max(5, reps - 2); 
-       }
-       
-       // 3. Ultra-fine metric scaling (Guarantees different plans for slight data differences)
+       if (goal === 'lose') reps += Math.floor(wDiff / 5);
+       if (goal === 'gain') { sets += 1; reps = Math.max(5, reps - 2); }
+
        if (typeof reps === 'number') {
-         // Age penalty factor (older = slightly lower reps to protect joints, compensated by form)
-         const agePenalty = age > 30 ? Math.floor((age - 30) / 10) : 0;
-         reps = Math.max(5, reps - agePenalty);
+         reps += (weight % 3);
+       }
 
-         // Weight micro-adjustment: Every 3kg difference alters the rep scheme
-         const weightMod = Math.floor(weight % 3);
-         if (weightMod === 1) reps += 1;
-         else if (weightMod === 2) reps -= 1;
+       // ── Progressive Overload: scale reps by difficulty multiplier ──
+       if (typeof reps === 'number') {
+         reps = Math.round(reps * difficultyMultiplier);
+       }
 
-         // Height micro-adjustment: Taller people have longer levers, making calisthenics harder
-         if (height > 185 && ex.name.toLowerCase().includes('push')) {
-           reps = Math.max(5, reps - 1); // 1 less rep for long arms on pushups
-         }
+       // ── Progressive Overload: add extra set every 2 phases (30 days) ──
+       if (phase >= 2) {
+         sets += Math.floor(phase / 2);
+         sets = Math.min(sets, 6); // Cap at 6 sets max
        }
 
        return { ...ex, sets, reps: isNaN(reps) ? ex.reps : reps };
@@ -654,19 +593,6 @@ export function getTailoredWorkout(appData) {
   if (customWorkout.core) customWorkout.core.exercises = generateSplit('core');
   if (customWorkout.legs) customWorkout.legs.exercises = generateSplit('legs');
 
-  // Age-based Warmup/Cooldown adjustments
-  if (age > 40) {
-    ['push', 'pull', 'core', 'legs'].forEach(split => {
-      if (customWorkout[split]) {
-        if (customWorkout[split].warmup) {
-           customWorkout[split].warmup.push({ name: 'Extra Joint Rotations', detail: '60 sec' });
-        }
-        if (customWorkout[split].duration) {
-           customWorkout[split].duration += 5; // Add 5 mins to expected duration
-        }
-      }
-    });
-  }
-
   return customWorkout;
 }
+

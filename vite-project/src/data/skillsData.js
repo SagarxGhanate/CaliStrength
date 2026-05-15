@@ -11,6 +11,7 @@ export const SKILLS_DATA = {
     { id: 'superman-hold',    name: 'Superman Hold',       img: '/Assets/Superman hold.png',       freq: '3x per week', requirements: ['Back Extension — 10 reps','Hip Hinge — basic','Glute Activation — basic'] },
     { id: 'tricep-dips',      name: 'Tricep Dips',         img: '/Assets/TricepDips.png',          freq: '3x per week', requirements: ['Push Ups — 10 reps','Shoulder Stability — basic','Tricep Strength — basic'] },
     { id: 'mountain-climbers', name:'Mountain Climbers',   img: '/Assets/mountain climbers.png',   freq: '3x per week', requirements: ['Plank Hold — 30s','Hip Flexor Mobility — basic','Core Stability — basic'] },
+    { id: 'frog-stand',        name: 'Frog Stand',          img: '/Assets/Frog Stand.png',          freq: '4x per week', requirements: ['Plank Hold — 20s','Wrist Mobility — basic','Core Awareness — basic','Squat Hold — 20s'] },
   ],
   intermediate: [
     { id: 'dips',             name: 'Dips',                img: '/Assets/Dips.png',                freq: '3x per week', requirements: ['Tricep Dips — 15 reps','Push Ups — 20 reps','Shoulder Stability — good','Straight Bar Support — 20s'] },
@@ -75,6 +76,7 @@ export const SKILL_VIDEOS = {
   'One Arm Push Up':    'https://www.youtube.com/watch?v=xp1tgjT_3k0',
   'Iron Cross':         'https://www.youtube.com/watch?v=mDrxNmEa57o',
   'Human Flag':         'https://www.youtube.com/watch?v=TF9XhvYh_m8',
+  'Frog Stand':         'https://www.youtube.com/watch?v=Pz_E1eKOg9A',
 };
 
 export const SKILL_STEPS_MAP = {
@@ -102,6 +104,13 @@ export const SKILL_STEPS_MAP = {
     'Step 2: Keep your core fully contracted to prevent rotation.',
     'Step 3: Gradually extend your legs straight out, starting with one leg or a straddle.',
     'Step 4: Hold the body parallel to the ground with locked elbows.',
+  ],
+  'Frog Stand': [
+    'Form correction: Place hands shoulder-width apart on the floor, spread fingers wide for a solid base, and keep elbows slightly bent.',
+    'Step 1: Squat down and place your knees on the back of your upper arms (triceps), near your armpits.',
+    'Step 2: Lean forward slowly, shifting your weight onto your hands while keeping your core tight.',
+    'Step 3: Lift your feet off the ground one at a time, finding your balance point.',
+    'Step 4: Hold the position with controlled breathing — aim for 10–30 seconds.',
   ],
 };
 
