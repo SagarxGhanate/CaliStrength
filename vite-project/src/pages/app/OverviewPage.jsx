@@ -6,9 +6,10 @@ import { getTailoredWorkout } from '../../data/workoutData'
 import { filterWorkoutExercises } from '../../data/injuryFilter'
 import styles from './OverviewPage.module.css'
 import { computeNotifications } from '../../components/ui/NotificationsPanel'
-import { parseStoredDate } from '../../utils/dateUtils'
 import { getTodaySplitKey, getDayNumber } from '../../utils/workoutSplitUtils'
 import { formatRepsDisplay, isHoldExercise } from '../../utils/exerciseUtils'
+import { computeStreak } from '../../utils/streakUtils'
+import { parseStoredDate } from '../../utils/dateUtils'
 
 /* ─── Helpers ─── */
 
@@ -19,76 +20,38 @@ function getTodaySplit(appData) {
   return filterWorkoutExercises(rawSplit)
 }
 
-
-
-function computeStreak(workoutHistory = []) {
-  if (!workoutHistory.length) return 0
-  
-  // Build a Set of unique workout date strings (YYYY-MM-DD)
-  const workedDates = new Set(workoutHistory.map(w => {
-    const d = parseStoredDate(w.date || w.timestamp)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }))
-  
-  let streak = 0
-  const cur = new Date()
-  cur.setHours(0, 0, 0, 0)
-
-  // Walk backwards day by day from today
-  const check = new Date(cur)
-  
-  // If today is Sunday, skip it (rest day)
-  if (check.getDay() === 0) check.setDate(check.getDate() - 1)
-
-  // If today hasn't been worked out yet, check if yesterday (or last non-Sunday) was
-  const todayStr = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`
-  if (!workedDates.has(todayStr)) {
-    // Allow today to not be done yet — step back one day
-    check.setDate(check.getDate() - 1)
-    // Skip Sunday
-    if (check.getDay() === 0) check.setDate(check.getDate() - 1)
-  }
-
-  while (true) {
-    // Skip Sundays (rest days don't break streak)
-    if (check.getDay() === 0) {
-      check.setDate(check.getDate() - 1)
-      continue
-    }
-    
-    const dateStr = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`
-    if (workedDates.has(dateStr)) {
-      streak++
-      check.setDate(check.getDate() - 1)
-    } else {
-      break
-    }
-  }
-  
-  return streak
-}
-
 function getWeeklyProgress(workoutHistory = []) {
   const total = 6 // 6 sessions per week (Mon–Sat)
   const today = new Date()
   const dow = today.getDay()
+  
+  // If today is Sunday, refresh the donut to 0 for the upcoming week
+  if (dow === 0) {
+    return { total, done: 0, pct: 0 }
+  }
+
+  // Find Monday of the current week
   const monday = new Date(today)
-  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1))
+  monday.setDate(today.getDate() - (dow - 1))
   monday.setHours(0,0,0,0)
 
-  // Count sessions logged this week (Mon to today)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23,59,59,999)
+  // Find Saturday of the current week
+  const saturday = new Date(monday)
+  saturday.setDate(monday.getDate() + 5)
+  saturday.setHours(23,59,59,999)
 
-  const done = workoutHistory.filter(w => {
+  // Count unique days worked out this week (Mon to Sat)
+  const uniqueDaysDone = new Set()
+
+  workoutHistory.forEach(w => {
     const d = parseStoredDate(w.date || w.timestamp)
-    return d >= monday && d <= sunday
-  }).length
+    // Only count if it's between Mon-Sat and not a Sunday
+    if (d >= monday && d <= saturday && d.getDay() !== 0) {
+      uniqueDaysDone.add(d.toDateString())
+    }
+  })
 
+  const done = uniqueDaysDone.size
   const capped = Math.min(done, total)
   return { total, done: capped, pct: Math.round((capped / total) * 100) }
 }
@@ -438,7 +401,7 @@ export default function OverviewPage() {
           </button>
         </div>
 
-        <div className={styles.welcomeHeader}>
+        <div className={`${styles.welcomeHeader} ${styles.animateFadeUp}`}>
           <div className={styles.welcomeTitle}>
             <h2>Athlete Dashboard</h2>
             <p>Welcome back, {profile?.name || 'Athlete'} — push your limits today. 👊</p>
@@ -446,7 +409,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className={styles.statsGrid}>
+        <div className={`${styles.statsGrid} ${styles.animateFadeUp} ${styles.delay1}`}>
           <StatCard
             icon="monitor_weight"
             label="Day's Weight"
@@ -472,12 +435,12 @@ export default function OverviewPage() {
         {/* Main 2-col grid */}
         <div className={styles.dashboardMainGrid}>
           {/* Left: Today's Session */}
-          <div className={styles.colSession}>
+          <div className={`${styles.colSession} ${styles.animateFadeUp} ${styles.delay2}`}>
             <SessionCard workout={todayWorkout} goal={goal} />
           </div>
 
           {/* Right: Next Skill + Weekly Progress + PRs */}
-          <div className={styles.colSidebar}>
+          <div className={`${styles.colSidebar} ${styles.animateFadeUp} ${styles.delay3}`}>
             <NextSkillCard skillsData={skillsData} />
             <WeeklyProgressCard pct={weeklyProgress.pct} done={weeklyProgress.done} total={weeklyProgress.total} />
             <LatestPRsCard allExerciseReps={allExerciseReps} />
@@ -485,7 +448,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Mobile Footer Nav */}
-        <div className={styles.mobileFooterNav}>
+        <div className={`${styles.mobileFooterNav} ${styles.animateFadeUp} ${styles.delay4}`}>
           <button className={styles.mobileFooterItem} onClick={() => navigate('/records')}>
             <span>Personal Records</span>
             <span className="material-symbols-outlined">emoji_events</span>

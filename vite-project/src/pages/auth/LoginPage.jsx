@@ -1,8 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import { signInWithGoogle, signInWithEmail } from '../../lib/firebase'
 import { sendEmail } from '../../lib/email'
+import { isAuthenticated, getStoredUser } from '../../lib/api'
 import styles from './AuthPages.module.css'
 import darkLogo from '../../assets/Logo/Dark theme logo.png'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
@@ -17,6 +18,13 @@ googleProvider.setCustomParameters({ prompt: 'select_account' })
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function LoginPage() {
+  // If already logged in, skip login and go straight to dashboard
+  if (isAuthenticated()) {
+    const user = getStoredUser()
+    if (user && !user.is_onboarded) return <Navigate to="/onboarding" replace />
+    return <Navigate to="/" replace />
+  }
+
   const navigate = useNavigate()
   const { theme } = useApp()
   const [email, setEmail]       = useState('')
@@ -46,20 +54,20 @@ export default function LoginPage() {
       avatar: result.avatar,
       is_onboarded: result.is_onboarded,
     }))
-    // Also update the existing caliStrengthData profile so the app UI works
-    const existing = JSON.parse(localStorage.getItem('caliStrengthData') || '{}')
-    existing.profile = {
-      ...existing.profile,
-      name: result.name,
-      email: result.email,
-      avatar: result.avatar || existing?.profile?.avatar || '',
-    }
-    localStorage.setItem('caliStrengthData', JSON.stringify(existing))
+    // Store login timestamp for 30-day session expiry
+    localStorage.setItem('cs_login_at', Date.now().toString())
 
-    if (!result.is_onboarded) {
-      navigate('/onboarding')
+    // Clear any stale app data from a previous session so AppContext
+    // starts fresh and hydrates exclusively from MySQL on next mount
+    localStorage.removeItem('caliStrengthData')
+    localStorage.removeItem('cs_session_progress')
+    localStorage.removeItem('caliSkills')
+
+    // Full page reload so AppProvider remounts and fetches fresh from MySQL
+    if (result.is_onboarded) {
+      window.location.href = '/dashboard'
     } else {
-      navigate('/')
+      window.location.href = '/onboarding'
     }
   }
 
@@ -117,7 +125,16 @@ export default function LoginPage() {
 
   return (
     <div className={styles.authWrapper}>
-      <div className={styles.authCard}>
+      <div className={styles.authCard} style={{ position: 'relative' }}>
+        {/* Loading Overlay */}
+        {loading && (
+          <div className={styles.authOverlay}>
+            <div className={styles.spinner}></div>
+            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Authenticating...</h3>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.8 }}>Connecting securely</p>
+          </div>
+        )}
+
         <div className={styles.authLogo}>
           <img src={theme === 'dark' ? darkLogo : lightLogo} alt="CaliStrength" />
           <p>Sign in to continue</p>

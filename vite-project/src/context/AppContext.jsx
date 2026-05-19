@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { parseStoredDate, toLocalDateStr } from '../utils/dateUtils'
+import { computeLongestStreak } from '../utils/streakUtils'
 
 // ─── Default data shape (mirrors caliStrengthData) ────────────────────────
 const DEFAULT_DATA = {
@@ -49,7 +50,18 @@ function mergeRemoteIntoLocal(local, remote) {
   const merged = { ...local }
 
   if (remote.weightHistory?.length > 0) {
-    merged.weightHistory = remote.weightHistory
+    // Deduplicate by date string
+    const uniqueWeights = []
+    const seenDates = new Set()
+    for (let i = remote.weightHistory.length - 1; i >= 0; i--) {
+      const entry = remote.weightHistory[i]
+      const dStr = toLocalDateStr(parseStoredDate(entry.date))
+      if (!seenDates.has(dStr)) {
+        seenDates.add(dStr)
+        uniqueWeights.unshift(entry)
+      }
+    }
+    merged.weightHistory = uniqueWeights
   }
   if (remote.workoutHistory?.length > 0) {
     merged.workoutHistory = remote.workoutHistory
@@ -64,20 +76,8 @@ function mergeRemoteIntoLocal(local, remote) {
       minutes: Math.floor((w.totalSeconds || 0) / 60),
     }))
 
-    // Compute longestStreak from workout history dates
-    const uniqueDates = [...new Set(remote.workoutHistory.map(w => toLocalDateStr(w.date)))].sort()
-    let longest = 0, current = 0, prevDate = null
-    for (const ds of uniqueDates) {
-      const d = parseStoredDate(ds); d.setHours(0,0,0,0)
-      if (!prevDate) { current = 1 }
-      else {
-        const diff = (d - prevDate) / 86400000
-        if (diff === 1) current++
-        else if (diff > 1) current = 1
-      }
-      if (current > longest) longest = current
-      prevDate = d
-    }
+    // Compute longestStreak from workout history (Sunday-aware)
+    const longest = computeLongestStreak(remote.workoutHistory)
     merged.longestStreak = Math.max(merged.longestStreak || 0, longest)
   }
 
@@ -103,7 +103,10 @@ function mergeRemoteIntoLocal(local, remote) {
 // ── Fetch all user data from MySQL in one burst ───────────────────────────────
 async function fetchRemoteData() {
   const token = getToken()
-  if (!token) return null
+  if (!token) {
+    console.log('[AppContext] No token found, skipping remote fetch')
+    return null
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -111,17 +114,37 @@ async function fetchRemoteData() {
   }
 
   try {
-    const [meRes, workoutsRes, weightRes, recordsRes] = await Promise.all([
+    console.log('[AppContext] Fetching remote data from MySQL...')
+    const [meRes, workoutsRes, weightRes, recordsRes, skillsRes] = await Promise.all([
       fetch(`${API}/auth/me`,             { headers }),
       fetch(`${API}/workouts/history`,    { headers }),
       fetch(`${API}/weight`,             { headers }),
       fetch(`${API}/records`,            { headers }),
+      fetch(`${API}/skills/user`,        { headers }),
     ])
+
+    // If auth failed (401), the token is invalid/expired — clear it
+    if (meRes.status === 401) {
+      console.warn('[AppContext] Token expired or invalid (401), clearing auth')
+      localStorage.removeItem('cs_token')
+      localStorage.removeItem('cs_user')
+      localStorage.removeItem('cs_login_at')
+      return null
+    }
 
     const me       = meRes.ok       ? await meRes.json()       : null
     const workouts = workoutsRes.ok ? await workoutsRes.json() : []
     const weight   = weightRes.ok   ? await weightRes.json()   : []
     const records  = recordsRes.ok  ? await recordsRes.json()  : []
+    const skills   = skillsRes.ok   ? await skillsRes.json()   : null
+
+    console.log('[AppContext] Remote data received:', {
+      profile: !!me,
+      workouts: workouts.length,
+      weightLogs: weight.length,
+      records: records.length,
+      skills: !!skills,
+    })
 
     // Normalize workout history: snake_case → camelCase
     const normalizedHistory = workouts.map(w => {
@@ -228,6 +251,7 @@ async function fetchRemoteData() {
         date: w.date,
         weight: w.weight_kg != null ? String(w.weight_kg) : (w.weight || '0'),
       })),
+      skills,
     }
   } catch (err) {
     console.warn('[AppContext] Could not fetch from MySQL backend:', err.message)
@@ -264,6 +288,17 @@ export function AppProvider({ children }) {
           saveLocalData(merged)
           return merged
         })
+        if (remote.skills) {
+          setSkillsDataRaw(prev => {
+            const next = { 
+              ...prev, 
+              ongoing: remote.skills.ongoing.map(s => s.skill_key), 
+              mastered: remote.skills.mastered.map(s => s.skill_key) 
+            }
+            localStorage.setItem('caliSkills', JSON.stringify(next))
+            return next
+          })
+        }
         // Apply theme from backend if present
         if (remote.profile?.theme) {
           applyTheme(remote.profile.theme)

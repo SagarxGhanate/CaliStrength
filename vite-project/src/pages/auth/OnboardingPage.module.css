@@ -164,3 +164,30 @@
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
 }
+
+/* ── Switch Account Link ──────────────────────────────────────────────────── */
+.switchAccount {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.switchAccountBtn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-main);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.switchAccountBtn:hover {
+  color: #ff8c42;
+  opacity: 0.9;
+}

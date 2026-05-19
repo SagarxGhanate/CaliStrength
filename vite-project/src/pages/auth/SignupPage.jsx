@@ -1,7 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import { sendEmail } from '../../lib/email'
+import { isAuthenticated, getStoredUser } from '../../lib/api'
 import styles from './AuthPages.module.css'
 import darkLogo from '../../assets/Logo/Dark theme logo.png'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
@@ -16,6 +17,13 @@ googleProvider.setCustomParameters({ prompt: 'select_account' })
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function SignupPage() {
+  // If already logged in, skip signup and go straight to dashboard
+  if (isAuthenticated()) {
+    const user = getStoredUser()
+    if (user && !user.is_onboarded) return <Navigate to="/onboarding" replace />
+    return <Navigate to="/" replace />
+  }
+
   const navigate = useNavigate()
   const { theme } = useApp()
   const [name, setName]         = useState('')
@@ -23,6 +31,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   async function sendTokenToBackend(idToken) {
     const res = await fetch(`${API}/auth/firebase`, {
@@ -44,20 +53,19 @@ export default function SignupPage() {
       avatar: result.avatar,
       is_onboarded: result.is_onboarded,
     }))
-    const existing = JSON.parse(localStorage.getItem('caliStrengthData') || '{}')
-    existing.profile = {
-      ...existing.profile,
-      name: result.name,
-      email: result.email,
-      avatar: result.avatar || '',
-    }
-    localStorage.setItem('caliStrengthData', JSON.stringify(existing))
+    // Store login timestamp for 30-day session expiry
+    localStorage.setItem('cs_login_at', Date.now().toString())
 
-    // Returning user (already onboarded) → go straight to dashboard
+    // Clear any stale app data so AppContext hydrates fresh from MySQL
+    localStorage.removeItem('caliStrengthData')
+    localStorage.removeItem('cs_session_progress')
+    localStorage.removeItem('caliSkills')
+
+    // Full page reload so AppProvider remounts and fetches fresh from MySQL
     if (result.is_onboarded) {
-      navigate('/')
+      window.location.href = '/dashboard'
     } else {
-      navigate('/onboarding')
+      window.location.href = '/onboarding'
     }
   }
 
@@ -85,14 +93,17 @@ export default function SignupPage() {
       const signupData = await signupRes.json()
       if (!signupRes.ok) throw new Error(signupData.detail || 'Signup failed')
       
-      // Send welcome email with password
+      // Send welcome email with credentials
       await sendEmail({
         to_email: email,
-        subject: 'Welcome to CaliStrength!',
-        message: `Welcome to CaliStrength!\n\nYour account has been created successfully.\nEmail: ${email}\n\nStart your calisthenics journey and track your progress!\n\nHappy training!\n- CaliStrength Support`
+        subject: '🔥 Welcome to CaliStrength — Your Account Details',
+        message: `Welcome to CaliStrength, ${name}!\n\nYour account has been created successfully.\n\n📧 Email: ${email}\n🔑 Password: ${password}\n\nPlease save these credentials securely.\n\n🏋️ Start your calisthenics journey and track your progress!\n\nHappy training!\n— CaliStrength Team`
       })
       
-      handleAuthSuccess(signupData)
+      setSignupSuccess(true)
+      setTimeout(() => {
+        handleAuthSuccess(signupData)
+      }, 1500)
     } catch (err) {
       const msg = err.message || ''
       if (msg.includes('email-already-in-use')) {
@@ -102,7 +113,6 @@ export default function SignupPage() {
       } else {
         setError(msg || 'Sign up failed. Please try again.')
       }
-    } finally {
       setLoading(false)
     }
   }
@@ -115,19 +125,55 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, googleProvider)
       const idToken = await result.user.getIdToken()
       const backendResult = await sendTokenToBackend(idToken)
-      handleAuthSuccess(backendResult)
+      
+      // Attempt to send welcome email (no password since they use Google)
+      try {
+        await sendEmail({
+          to_email: result.user.email,
+          subject: '🔥 Welcome to CaliStrength',
+          message: `Welcome to CaliStrength, ${result.user.displayName || 'Athlete'}!\n\nYour account has been successfully created using Google Sign-In.\n\n📧 Email: ${result.user.email}\n\n🏋️ Start your calisthenics journey and track your progress!\n\nHappy training!\n— CaliStrength Team`
+        })
+      } catch (emailErr) {
+        console.error('Failed to send google welcome email', emailErr)
+      }
+
+      setSignupSuccess(true)
+      setTimeout(() => {
+        handleAuthSuccess(backendResult)
+      }, 1500)
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message || 'Google sign-up failed.')
       }
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <div className={styles.authWrapper}>
-      <div className={styles.authCard}>
+      <div className={styles.authCard} style={{ position: 'relative' }}>
+        
+        {/* Loading / Success Overlay */}
+        {(loading || signupSuccess) && (
+          <div className={styles.authOverlay}>
+            {signupSuccess ? (
+              <div className={styles.successPopup}>
+                <div className={styles.successIcon}>
+                  <span className="material-symbols-outlined">check</span>
+                </div>
+                <h3>Signup Successful!</h3>
+                <p>Welcome to CaliStrength</p>
+              </div>
+            ) : (
+              <>
+                <div className={styles.spinner}></div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Creating Account...</h3>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.8 }}>Setting up your profile</p>
+              </>
+            )}
+          </div>
+        )}
+
         <div className={styles.authLogo}>
           <img src={theme === 'dark' ? darkLogo : lightLogo} alt="CaliStrength" />
           <p>Create your account</p>

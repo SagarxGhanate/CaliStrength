@@ -1,11 +1,15 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import AppLayout from './components/layout/AppLayout'
 import ProtectedRoute from './components/ui/ProtectedRoute'
+import SplashScreen from './components/ui/SplashScreen'
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
 import OnboardingPage from './pages/auth/OnboardingPage'
+
+import LandingPage from './pages/public/LandingPage'
 
 // App Pages
 import OverviewPage from './pages/app/OverviewPage'
@@ -23,6 +27,21 @@ import CreditsPage from './pages/app/CreditsPage'
 import ResourcesPage from './pages/app/ResourcesPage'
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('splashShown')
+  })
+
+  if (showSplash) {
+    return (
+      <SplashScreen 
+        onComplete={() => {
+          setShowSplash(false)
+          sessionStorage.setItem('splashShown', 'true')
+        }} 
+      />
+    )
+  }
+
   return (
     <Routes>
       {/* Public / Auth Routes */}
@@ -33,7 +52,7 @@ export default function App() {
       {/* Protected App Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/"             element={<OverviewPage />} />
+          <Route path="/dashboard"    element={<OverviewPage />} />
           <Route path="/workout"      element={<WorkoutPage />} />
           <Route path="/progress"     element={<ProgressPage />} />
           <Route path="/activity"     element={<ActivityPage />} />
@@ -49,8 +68,11 @@ export default function App() {
         </Route>
       </Route>
 
+      {/* Public Home Page */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

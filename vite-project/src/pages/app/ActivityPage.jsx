@@ -3,6 +3,7 @@ import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import styles from './ActivityPage.module.css'
 import { parseStoredDate, toLocalDateStr } from '../../utils/dateUtils'
+import { computeLongestStreak } from '../../utils/streakUtils'
 
 
 export default function ActivityPage() {
@@ -53,33 +54,9 @@ export default function ActivityPage() {
 
     hoursFormatted = hoursFormatted.trim()
 
-    // 3. Compute actual Longest Streak
-    const dates = [...new Set(workoutHistory.map(w => {
-      const d = parseStoredDate(w.date || w.timestamp)
-      return toLocalDateStr(d)
-    }))].sort()
-    
-    let longest = 0
-    let current = 0
-    let prevDate = null
-
-    for (const ds of dates) {
-      const d = new Date(ds); d.setHours(0,0,0,0)
-      if (!prevDate) {
-        current = 1
-      } else {
-        const diffDays = (d - prevDate) / 86400000
-        if (diffDays === 1) {
-          current++
-        } else if (diffDays > 1) {
-          current = 1
-        }
-      }
-      if (current > longest) longest = current
-      prevDate = d
-    }
-    
-    const finalLongestStreak = Math.max(longestStreak || 0, longest)
+    // 3. Compute actual Longest Streak using shared Sunday-aware utility
+    const computedStreak = computeLongestStreak(workoutHistory)
+    const finalLongestStreak = Math.max(longestStreak || 0, computedStreak)
 
     return { thisMonthHours: hoursFormatted, thisMonthExercises: totalExercises, computedLongestStreak: finalLongestStreak }
   }, [workoutHistory, workoutHoursPerDay, longestStreak])

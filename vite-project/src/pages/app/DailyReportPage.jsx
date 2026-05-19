@@ -3,6 +3,7 @@ import AppHeader from '../../components/layout/AppHeader'
 import { useApp } from '../../context/AppContext'
 import { useNavigate } from 'react-router-dom'
 import { formatDateStandard, parseStoredDate, toLocalDateStr } from '../../utils/dateUtils'
+import { computeStreak } from '../../utils/streakUtils'
 import styles from './DailyReportPage.module.css'
 
 // Helper: get today's weekday label
@@ -14,8 +15,19 @@ function getTodayLabel() {
 // Helper: get the last 7 logged weights sequentially (no calendar gaps)
 function getRecentWeightData(weightHistory) {
   const sorted = [...(weightHistory || [])].sort((a,b) => parseStoredDate(a.date) - parseStoredDate(b.date))
-  const recent = sorted.slice(-7)
   
+  // Deduplicate by date — keep only the latest entry per day
+  const unique = []
+  const seenDates = new Set()
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const dateKey = toLocalDateStr(sorted[i].date)
+    if (!seenDates.has(dateKey)) {
+      seenDates.add(dateKey)
+      unique.unshift(sorted[i])
+    }
+  }
+  
+  const recent = unique.slice(-7)
   const today = new Date()
   
   const days = recent.map(entry => {
@@ -32,34 +44,6 @@ function getRecentWeightData(weightHistory) {
   }
   
   return days
-}
-
-// Helper: compute streak accurately
-function computeStreak(workoutHistory = []) {
-  if (!workoutHistory.length) return 0
-  const dates = [...new Set(workoutHistory.map(w => {
-    const d = parseStoredDate(w.date || w.timestamp)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }))].sort().reverse()
-  
-  let streak = 0
-  let cur = new Date(); cur.setHours(0,0,0,0)
-  
-  for (const ds of dates) {
-    const [year, month, day] = ds.split('-')
-    const d = new Date(year, month - 1, day)
-    d.setHours(0,0,0,0)
-    
-    const diffDays = Math.round((cur - d) / 86400000)
-    if (diffDays <= 1) { 
-      if (diffDays === 1 || streak === 0) streak++; 
-      cur = d 
-    } else break
-  }
-  return streak
 }
 
 // Helper: get streak badge label based on 7-day tiers
@@ -341,8 +325,19 @@ export default function DailyReportPage() {
           <p className={styles.introSub}>{getTodayLabel()} — {badgeLabel}</p>
         </div>
 
+        {/* Mobile-only streak + share strip (hidden on desktop) */}
+        <div className={styles.mobileHeaderStrip}>
+          <div className={styles.streakPill}>
+            <span className="material-symbols-outlined">local_fire_department</span>
+            <span><span className={styles.streakCount}>{streak}</span> Day Streak</span>
+          </div>
+          <button className={styles.shareBtn} onClick={handleShare}>
+            <span className="material-symbols-outlined">share</span>Share
+          </button>
+        </div>
+
         {/* Summary Cards */}
-        <div className={styles.summaryGrid}>
+        <div className={`${styles.summaryGrid} animateFadeUp delay1`}>
           <div className={styles.summaryCard}>
             <p className={styles.summaryLabel}>Active Time</p>
             <div className={styles.summaryValue}>
@@ -380,7 +375,7 @@ export default function DailyReportPage() {
         </div>
 
         {/* Weight Chart + PR Alerts */}
-        <div className={styles.insightsGrid}>
+        <div className={`${styles.insightsGrid} animateFadeUp delay2`}>
           {/* Weight Trend */}
           <div className={`${styles.reportCard} ${styles.insightsMain}`}>
             <div className={styles.cardHeader}>
@@ -421,7 +416,7 @@ export default function DailyReportPage() {
         </div>
 
         {/* Today's Exercises + Tomorrow's Preview */}
-        <div className={styles.bottomGrid}>
+        <div className={`${styles.bottomGrid} animateFadeUp delay3`}>
           {/* Today's Exercises */}
           <div className={`${styles.reportCard} ${styles.exercisesCard}`}>
             <div className={styles.cardHeader}>

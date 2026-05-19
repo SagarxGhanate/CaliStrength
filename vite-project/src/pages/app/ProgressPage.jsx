@@ -146,7 +146,20 @@ export default function ProgressPage() {
   const recentWorkouts = [...workoutHistory].reverse().slice(0, 5)
 
   // --- WEIGHT HISTORY (Last 10 + Chart data) ---
-  const sortedWeights = [...weightHistory].sort((a, b) => parseStoredDate(a.date) - parseStoredDate(b.date))
+  const sortedWeights = useMemo(() => {
+    const sorted = [...weightHistory].sort((a, b) => parseStoredDate(a.date) - parseStoredDate(b.date))
+    // Deduplicate by date — keep only the latest entry per day
+    const unique = []
+    const seen = new Set()
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const dateKey = toLocalDateStr(sorted[i].date)
+      if (!seen.has(dateKey)) {
+        seen.add(dateKey)
+        unique.unshift(sorted[i])
+      }
+    }
+    return unique
+  }, [weightHistory])
   const recentWeights = [...sortedWeights].reverse().slice(0, 5)
   
   const [hoveredPoint, setHoveredPoint] = useState(null)
@@ -259,7 +272,7 @@ export default function ProgressPage() {
       <div className={styles.contentInner}>
         
         {/* STATS ROW */}
-        <div className={styles.statsRow}>
+        <div className={`${styles.statsRow} animateFadeUp delay1`}>
           <div className={styles.statCard}>
             <div className={styles.statCardTop}>
               <span className="material-symbols-outlined">fitness_center</span>
@@ -284,7 +297,7 @@ export default function ProgressPage() {
         </div>
 
         {/* CHARTS ROW */}
-        <div className={styles.chartsRow}>
+        <div className={`${styles.chartsRow} animateFadeUp delay2`}>
           
           {/* Dynamic Progress */}
           <section className={styles.chartCard}>
@@ -357,7 +370,7 @@ export default function ProgressPage() {
         </div>
 
         {/* RECENT ACTIVITY */}
-        <section className={styles.tableSection}>
+        <section className={`${styles.tableSection} animateFadeUp delay3`}>
           <div className={styles.tableHeader}>
             <h3>Recent Activity</h3>
             <Link to="/activity" className={styles.viewAll}>
@@ -393,7 +406,7 @@ export default function ProgressPage() {
         </section>
 
         {/* WEIGHT HISTORY */}
-        <section className={styles.tableSection}>
+        <section className={`${styles.tableSection} animateFadeUp delay4`}>
           <div className={styles.tableHeader}>
             <h3>Weight History</h3>
             <Link to="/weight" className={styles.viewAll}>
@@ -471,12 +484,12 @@ export default function ProgressPage() {
                 {chartData.gridLines.map((line, i) => (
                   <g key={`grid-${i}`}>
                     <line x1={chartData.paddingLeft} x2={chartData.w - chartData.paddingRight} y1={line.y} y2={line.y} stroke="var(--border-main)" strokeDasharray="4" />
-                    <text x={chartData.paddingLeft - 10} y={line.y + 4} fill="var(--text-tertiary)" fontSize="11" textAnchor="end">{line.label} kg</text>
+                    <text x={chartData.paddingLeft - 10} y={line.y + 4} fill="var(--text-tertiary)" fontSize="14" fontWeight="600" textAnchor="end">{line.label} kg</text>
                   </g>
                 ))}
                 {/* X Axis Labels */}
                 {chartData.xLabels.map((lbl, i) => (
-                  <text key={`x-${i}`} x={lbl.x} y={chartData.h - 15} fill="var(--text-tertiary)" fontSize="11" textAnchor="middle">{lbl.label}</text>
+                  <text key={`x-${i}`} x={lbl.x} y={chartData.h - 15} fill="var(--text-tertiary)" fontSize="14" fontWeight="600" textAnchor="middle">{lbl.label}</text>
                 ))}
               </g>
 

@@ -588,7 +588,7 @@ export default function WorkoutPage() {
       <div className={styles.contentInner}>
       
       {/* Page Header */}
-      <div className={styles.pageHeader}>
+      <div className={`${styles.pageHeader} animateFadeUp delay1`}>
         <div>
           <div className={styles.programTag}>
             <span className="material-symbols-outlined">local_fire_department</span>
@@ -613,7 +613,7 @@ export default function WorkoutPage() {
       </div>
 
       {/* Summary */}
-      <div className={styles.summaryGrid}>
+      <div className={`${styles.summaryGrid} animateFadeUp delay2`}>
         <div className={styles.summaryCard}>
           <div className={styles.summaryIcon}>
             <span className="material-symbols-outlined">schedule</span>
@@ -635,7 +635,7 @@ export default function WorkoutPage() {
       </div>
 
       {/* Tabs */}
-      <div className={styles.tabsBar}>
+      <div className={`${styles.tabsBar} animateFadeUp delay3`}>
         <button 
           className={`${styles.tabBtn} ${activeTab === 'exercises' ? styles.active : ''}`}
           onClick={() => setActiveTab('exercises')}
@@ -658,7 +658,7 @@ export default function WorkoutPage() {
 
       {/* Tab Content */}
       {activeTab === 'exercises' && (
-        <div className={styles.exerciseList}>
+        <div className={`${styles.exerciseList} animateFadeUp delay4`}>
           {exercises.map((ex, idx) => {
             const completed = sessionProgress[ex.name] || 0
             const isFinished = completed >= ex.sets
@@ -724,7 +724,7 @@ export default function WorkoutPage() {
       )}
 
       {activeTab === 'warmup' && (
-        <div className={styles.exerciseList}>
+        <div className={`${styles.exerciseList} animateFadeUp delay4`}>
           <div className={styles.workoutDayLabel}>Cardio</div>
           {cardio.length > 0 ? cardio.map((item, idx) => (
             <div key={idx} className={styles.simpleExerciseRow}>
@@ -746,7 +746,7 @@ export default function WorkoutPage() {
       )}
 
       {activeTab === 'cooldown' && (
-        <div className={styles.exerciseList}>
+        <div className={`${styles.exerciseList} animateFadeUp delay4`}>
           <div className={styles.workoutDayLabel}>Cool-down</div>
           {cooldown.length > 0 ? cooldown.map((item, idx) => (
             <div key={idx} className={styles.simpleExerciseRow}>

@@ -247,24 +247,28 @@ export default function SettingPage() {
     } catch (err) {
       console.warn('Firebase sign-out error:', err)
     }
-    // Clear all auth & app data from localStorage
+    // Clear ALL auth & app data from localStorage
     localStorage.removeItem('cs_token')
     localStorage.removeItem('cs_user')
+    localStorage.removeItem('cs_login_at')
     localStorage.removeItem('caliStrengthData')
     localStorage.removeItem('cs_session_progress')
     localStorage.removeItem('cs_ai_chat')
     localStorage.removeItem('cs_ana_history')
     localStorage.removeItem('caliSkills')
     localStorage.removeItem('caliReadNotifs')
+    localStorage.removeItem('calistrength-theme')
     setShowLogoutConfirm(false)
-    navigate('/login')
+    // Full page reload to reset all React state (AppContext, etc.)
+    // navigate() would keep stale state in memory
+    window.location.href = '/login'
   }
 
   return (
     <>
       <AppHeader icon="settings" title="Settings" />
 
-      <div className={styles.contentInner}>
+      <div className={`${styles.contentInner} animateFadeUp delay1`}>
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Settings</h1>
           <p className={styles.pageSubtitle}>Personalize your CaliStrength training experience</p>
@@ -324,7 +328,7 @@ export default function SettingPage() {
               </div>
             </section>
 
-            <section className={styles.settingsSection} style={{ marginTop: '2rem' }}>
+            <section className={`${styles.settingsSection} animateFadeUp delay3`} style={{ marginTop: '2rem' }}>
               <div className={styles.sectionHeading}>
                 <span className="material-symbols-outlined">settings_accessibility</span>
                 <h3>Workout & Safety</h3>
@@ -393,7 +397,7 @@ export default function SettingPage() {
               </div>
             </section>
 
-            <section className={styles.settingsSection} style={{ marginTop: '2rem' }}>
+            <section className={`${styles.settingsSection} animateFadeUp delay4`} style={{ marginTop: '2rem' }}>
               <div className={styles.sectionHeading}>
                 <span className="material-symbols-outlined">palette</span>
                 <h3>Appearance</h3>

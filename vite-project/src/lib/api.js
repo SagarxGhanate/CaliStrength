@@ -72,11 +72,14 @@ export function saveAuthResult(result) {
     avatar: result.avatar,
     is_onboarded: result.is_onboarded,
   }))
+  // Store login timestamp for 30-day session expiry
+  localStorage.setItem('cs_login_at', Date.now().toString())
 }
 
 export function clearAuth() {
   localStorage.removeItem('cs_token')
   localStorage.removeItem('cs_user')
+  localStorage.removeItem('cs_login_at')
 }
 
 export function getStoredUser() {
@@ -87,6 +90,19 @@ export function getStoredUser() {
   }
 }
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
 export function isAuthenticated() {
-  return !!getToken() && !!getStoredUser()
+  const token = getToken()
+  const user = getStoredUser()
+  if (!token || !user) return false
+
+  // Check 30-day session expiry
+  const loginAt = parseInt(localStorage.getItem('cs_login_at') || '0', 10)
+  if (loginAt && (Date.now() - loginAt > THIRTY_DAYS_MS)) {
+    clearAuth()
+    return false
+  }
+
+  return true
 }

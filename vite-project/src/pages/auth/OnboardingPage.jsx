@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import { formatDateStandard } from '../../utils/dateUtils'
+import { clearAuth } from '../../lib/api'
+import { auth } from '../../lib/firebase'
+import { signOut } from 'firebase/auth'
 import styles from './OnboardingPage.module.css'
 import lightLogo from '../../assets/Logo/Light theme logo.png'
 import darkLogo from '../../assets/Logo/Dark theme logo.png'
@@ -11,6 +14,17 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export default function OnboardingPage() {
   const { theme, setAppData } = useApp()
   const navigate = useNavigate()
+
+  // ── Escape hatch: let user go back to login with a different account ──
+  async function handleSwitchAccount() {
+    try {
+      await signOut(auth)
+    } catch (e) {
+      // ignore firebase signout errors
+    }
+    clearAuth()
+    navigate('/login')
+  }
 
   const [step, setStep] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -272,6 +286,13 @@ export default function OnboardingPage() {
           )}
 
         </form>
+
+        <p className={styles.switchAccount}>
+          Want to use a different account?{' '}
+          <button type="button" onClick={handleSwitchAccount} className={styles.switchAccountBtn}>
+            Go back to Login
+          </button>
+        </p>
       </div>
 
       {isGenerating && (

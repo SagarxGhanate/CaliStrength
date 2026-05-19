@@ -63,6 +63,18 @@ function applyCommand(cmd, part, state) {
     state.injuries = state.injuries.filter(i => i.part !== matchedPart)
   } else if (cmd === 'CLEAR_ALL_INJURIES') {
     state.injuries = []
+  } else if (cmd === 'REMOVE_EXERCISE') {
+    if (rawPart) {
+      const existing = state.injuries.find(i => i.part === rawPart && i.mode === 'exclude_exercise')
+      if (!existing) {
+        state.injuries.push({
+          part: rawPart,
+          date: Date.now(),
+          permanent: true,
+          mode: 'exclude_exercise'
+        })
+      }
+    }
   }
 }
 
@@ -403,8 +415,12 @@ RECOVERY — When user says they're healed:
 - Phase 1: "That's amazing ${name}! Ready to bring back all your exercises?"
 - Phase 2 (after YES): Output [CLEAR_INJURY:bodypart] or [CLEAR_ALL_INJURIES] and say: "Welcome back to full power ${name}! Your complete workout plan is restored."
 
+SPECIFIC EXERCISE REMOVAL:
+- If user just wants to completely remove/skip a specific exercise (e.g. "remove burpees" or "I don't want to do pushups"):
+- Output: [REMOVE_EXERCISE:exercise_name] (e.g. [REMOVE_EXERCISE:Burpees]) and say: "Done ${name}! I've removed that exercise from your plan."
+
 HIDDEN COMMANDS (never show these to user, they are stripped from your response):
-[ADD_INJURY:knee] [ADD_LIGHT_INJURY:shoulder] [CLEAR_INJURY:knee] [CLEAR_ALL_INJURIES]
+[ADD_INJURY:knee] [ADD_LIGHT_INJURY:shoulder] [CLEAR_INJURY:knee] [CLEAR_ALL_INJURIES] [REMOVE_EXERCISE:Burpees]
 
 ═══════════════════════════════════════
 TONE & PERSONALITY
@@ -532,7 +548,7 @@ export default function AIWidget() {
         let reply = data.choices?.[0]?.message?.content || 'Something went wrong. Try again.'
 
         // Parse commands from AI response
-        const cmdRegex = /\[(ADD_INJURY|ADD_LIGHT_INJURY|CLEAR_INJURY|CLEAR_ALL_INJURIES):?([^\]]*)\]/g
+        const cmdRegex = /\[(ADD_INJURY|ADD_LIGHT_INJURY|CLEAR_INJURY|CLEAR_ALL_INJURIES|REMOVE_EXERCISE):?([^\]]*)\]/g
         
         // Execute all commands found
         const matches = [...reply.matchAll(cmdRegex)]
