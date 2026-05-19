@@ -51,5 +51,5 @@ The client application is designed to be completely decoupled from the FastAPI b
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/sagarxghanate/calistrength-frontend.git
+   git clone https://github.com/SagarxGhanate/calistrength-frontend.git
    cd calistrength-frontend
